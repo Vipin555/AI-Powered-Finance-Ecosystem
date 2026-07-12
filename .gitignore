@@ -1,0 +1,23 @@
+# Dependency directories
+node_modules/
+**/node_modules/
+
+# Python virtual environment
+venv/
+**/venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+*.local
+
+# IDE files
+.vscode/
+.idea/
+.gemini/
