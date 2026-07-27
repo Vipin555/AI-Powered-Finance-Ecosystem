@@ -164,6 +164,14 @@ function App() {
       window.open('/simulator', '_blank');
       return;
     }
+    if (engine.id === 'portfolio-growth') {
+      window.open('/portfolio', '_blank');
+      return;
+    }
+    if (engine.id === 'irregular-income') {
+      window.open('/irregular-income', '_blank');
+      return;
+    }
     setSelectedEngine(engine);
     setEngineResult(null);
     setEngineError(null);
