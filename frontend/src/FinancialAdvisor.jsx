@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import './advisor.css';
 
-// ─── API Integration ────────────────────────────────────────────────────────
 // ─── Form steps config ───────────────────────────────────────────────────────
 const STEPS = [
   {
     title: 'Personal Info',
     icon: '👤',
     fields: [
-      { key: 'age', label: 'Your Age', type: 'number', placeholder: '28', unit: 'years', hint: 'Used to determine your investment horizon' },
+      { key: 'age', label: 'Your Age', type: 'number', placeholder: '28', unit: 'yrs', hint: 'Used to determine your investment horizon' },
       { key: 'monthly_income', label: 'Monthly Income (Net Take-Home)', type: 'number', placeholder: '75000', unit: '₹', hint: 'After tax income credited to your account' },
     ]
   },
@@ -16,8 +15,8 @@ const STEPS = [
     title: 'Monthly Outflows',
     icon: '💸',
     fields: [
-      { key: 'monthly_expenses', label: 'Monthly Expenses', type: 'number', placeholder: '30000', unit: '₹', hint: 'Groceries, rent, utilities, lifestyle etc.' },
-      { key: 'total_emis', label: 'Total Monthly EMIs', type: 'number', placeholder: '10000', unit: '₹', hint: 'All loan repayments combined' },
+      { key: 'monthly_expenses', label: 'Monthly Expenses', type: 'number', placeholder: '30000', unit: '₹', hint: 'Rent, groceries, utilities, subscriptions etc.' },
+      { key: 'total_emis', label: 'Total Monthly EMIs', type: 'number', placeholder: '10000', unit: '₹', hint: 'All active loan repayments combined' },
     ]
   },
   {
@@ -43,8 +42,8 @@ function ScoreRing({ score }) {
   const radius = 70;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
-  const color = score >= 75 ? '#4caf8e' : score >= 50 ? '#f59e0b' : '#ef4444';
-  const label = score >= 75 ? 'Excellent' : score >= 50 ? 'Fair' : 'Needs Work';
+  const color = score >= 75 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
+  const label = score >= 75 ? 'Excellent' : score >= 50 ? 'Good' : 'Needs Work';
 
   return (
     <div className="score-ring-wrapper">
@@ -59,8 +58,9 @@ function ScoreRing({ score }) {
           transform="rotate(-90 90 90)"
           style={{ transition: 'stroke-dashoffset 1.2s ease' }}
         />
-        <text x="90" y="84" textAnchor="middle" fill="#fff" fontSize="32" fontWeight="700">{score}</text>
-        <text x="90" y="108" textAnchor="middle" fill={color} fontSize="13">{label}</text>
+        <text x="90" y="82" textAnchor="middle" fill="#fff" fontSize="30" fontWeight="700">{score}</text>
+        <text x="90" y="102" textAnchor="middle" fill={color} fontSize="12" fontWeight="500">{label}</text>
+        <text x="90" y="120" textAnchor="middle" fill="rgba(255,255,255,0.4)" fontSize="10">out of 100</text>
       </svg>
       <p className="score-ring-label">Financial Health Score</p>
     </div>
@@ -68,7 +68,7 @@ function ScoreRing({ score }) {
 }
 
 function DonutChart({ portfolio }) {
-  const colors = { Equity: '#f26622', Debt: '#4c9af2', Gold: '#f59e0b', Cash: '#4caf8e' };
+  const colors = { Equity: '#3b82f6', Debt: '#10b981', Gold: '#f59e0b', Cash: '#8b5cf6' };
   const labels = Object.keys(portfolio);
   const total = 100;
   let cumAngle = -90;
@@ -76,10 +76,11 @@ function DonutChart({ portfolio }) {
   const slices = labels.map((key) => {
     const pct = portfolio[key];
     const angle = (pct / total) * 360;
+    if (angle === 0) return null;
     const startAngle = cumAngle;
     cumAngle += angle;
     const endAngle = cumAngle;
-    const r = 80, cx = 100, cy = 100, innerR = 45;
+    const r = 80, cx = 100, cy = 100, innerR = 50;
     const toRad = (a) => (a * Math.PI) / 180;
     const x1 = cx + r * Math.cos(toRad(startAngle));
     const y1 = cy + r * Math.sin(toRad(startAngle));
@@ -91,24 +92,32 @@ function DonutChart({ portfolio }) {
     const iy2 = cy + innerR * Math.sin(toRad(endAngle));
     const largeArc = angle > 180 ? 1 : 0;
     const d = `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${innerR} ${innerR} 0 ${largeArc} 0 ${ix1} ${iy1} Z`;
-    return { key, pct, d, color: colors[key] };
-  });
+    return { key, pct, d, color: colors[key] || '#3b82f6' };
+  }).filter(Boolean);
 
   return (
-    <div className="donut-wrap">
-      <svg viewBox="0 0 200 200" width="200" height="200">
+    <div className="donut-layout">
+      <div className="donut-chart-container">
+        <svg viewBox="0 0 200 200" width="180" height="180">
+          {slices.map((s) => (
+            <path key={s.key} d={s.d} fill={s.color} opacity="1" />
+          ))}
+        </svg>
+        <div className="donut-center-text">
+          <span className="donut-center-val">100%</span>
+          <span className="donut-center-lbl">Portfolio</span>
+        </div>
+      </div>
+      <div className="donut-legend-grid">
         {slices.map((s) => (
-          <path key={s.key} d={s.d} fill={s.color} opacity="0.9" />
-        ))}
-        <text x="100" y="96" textAnchor="middle" fill="#fff" fontSize="11" opacity="0.6">Portfolio</text>
-        <text x="100" y="112" textAnchor="middle" fill="#fff" fontSize="11" opacity="0.6">Mix</text>
-      </svg>
-      <div className="donut-legend">
-        {slices.map((s) => (
-          <div key={s.key} className="legend-item">
-            <span className="legend-dot" style={{ background: s.color }}></span>
-            <span className="legend-label">{s.key.charAt(0).toUpperCase() + s.key.slice(1)}</span>
-            <span className="legend-pct">{s.pct}%</span>
+          <div key={s.key} className="legend-row">
+            <div className="legend-left">
+              <span className="legend-dot" style={{ background: s.color }}></span>
+              <span className="legend-name">{s.key}</span>
+            </div>
+            <div className="legend-right">
+              <span className="legend-val">{s.pct}%</span>
+            </div>
           </div>
         ))}
       </div>
@@ -120,13 +129,13 @@ function BarChart({ cashFlow, income }) {
   const items = [
     { label: 'Expenses', value: cashFlow.expenses, color: '#ef4444' },
     { label: 'EMIs', value: cashFlow.emis, color: '#f59e0b' },
-    { label: 'Emergency', value: cashFlow.emergency, color: '#4c9af2' },
-    { label: 'Invest', value: cashFlow.investments, color: '#4caf8e' },
+    { label: 'Emergency', value: cashFlow.emergency, color: '#3b82f6' },
+    { label: 'Invest', value: cashFlow.investments, color: '#10b981' },
   ];
   const max = income || 1;
 
   return (
-    <div className="bar-chart">
+    <div className="bar-chart-container">
       {items.map((item) => (
         <div key={item.label} className="bar-row">
           <span className="bar-label">{item.label}</span>
@@ -136,9 +145,27 @@ function BarChart({ cashFlow, income }) {
               style={{ width: `${Math.min(100, (item.value / max) * 100)}%`, background: item.color }}
             ></div>
           </div>
-          <span className="bar-value">₹{item.value.toLocaleString('en-IN')}</span>
+          <span className="bar-value">₹{Math.round(item.value).toLocaleString('en-IN')}</span>
+          <span className="bar-pct">{Math.round((item.value / max) * 100)}%</span>
         </div>
       ))}
+    </div>
+  );
+}
+
+function SavingsRateBar({ rate, target = 20 }) {
+  const pct = Math.min(100, Math.round(rate));
+  const color = pct >= target ? '#10b981' : pct >= target / 2 ? '#f59e0b' : '#ef4444';
+  return (
+    <div className="savings-gauge">
+      <div className="savings-gauge-track">
+        <div className="savings-gauge-fill" style={{ width: `${pct}%`, background: color }} />
+        <div className="savings-gauge-target" style={{ left: `${target}%` }} title={`Target: ${target}%`} />
+      </div>
+      <div className="savings-gauge-labels">
+        <span style={{ color }}>You: {pct}%</span>
+        <span style={{ color: 'var(--text-secondary)' }}>Target: {target}%</span>
+      </div>
     </div>
   );
 }
@@ -170,34 +197,32 @@ export default function FinancialAdvisor() {
         setAnimating(false);
         setLoading(true);
         setLoadingStep(0);
-        
-        const steps = [
+
+        const messages = [
           "Analyzing cash flow patterns...",
           "Evaluating asset-liability ratio...",
           "Calculating dynamic risk capacity...",
           "Formulating personalized portfolio...",
-          "Generating priority action items..."
+          "Generating priority action items...",
         ];
-        
-        for (let i = 0; i < steps.length; i++) {
+
+        for (let i = 0; i < messages.length; i++) {
           setLoadingStep(i);
           await new Promise(r => setTimeout(r, 600));
         }
-        
+
         try {
           const response = await fetch("http://localhost:8000/api/advisor", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(formData)
           });
-          if (!response.ok) {
-            throw new Error(`API returned status ${response.status}`);
-          }
+          if (!response.ok) throw new Error(`API returned status ${response.status}`);
           const res = await response.json();
           setResult(res);
-        } catch(err) {
+        } catch (err) {
           console.error("Engine fetch error:", err);
-          alert("Failed to analyze data via backend engine. Ensure python backend is running.");
+          alert("Failed to connect to backend. Ensure the Python server is running on port 8000.");
         } finally {
           setLoading(false);
         }
@@ -212,13 +237,14 @@ export default function FinancialAdvisor() {
 
   const reset = () => { setResult(null); setStep(0); setFormData({}); };
 
+  // ─── LOADING VIEW ───────────────────────────────────────────────────────────
   if (loading) {
     const messages = [
       "Analyzing cash flow patterns...",
       "Evaluating asset-liability ratio...",
       "Calculating dynamic risk capacity...",
       "Formulating personalized portfolio...",
-      "Generating priority action items..."
+      "Generating priority action items...",
     ];
     return (
       <div className="adv-page flex-center" style={{ minHeight: '100vh' }}>
@@ -246,23 +272,27 @@ export default function FinancialAdvisor() {
     );
   }
 
-  // ── DASHBOARD view ─────────────────────────────────────────────────────
+  // ─── DASHBOARD VIEW ─────────────────────────────────────────────────────────
   if (result) {
     const r = result;
     const { features, prioritized_actions, cashFlow, portfolio } = r;
     const fh = features?.fiscal_health_aggregation || {};
     const emgSplit = features?.emergency_fund_split || { Savings_Account: 50, Liquid_MF: 30, Short_Term_FD: 20 };
-    
-    // Safe parse form data
-    const currentExp = Number(formData.monthly_expenses) || 0;
-    const targetExp = cashFlow.expenses || 0;
-    const expDiff = currentExp - targetExp;
-    
-    const currentEmg = Number(formData.emergency_fund) || 0;
-    const currentEmis = Number(formData.total_emis) || 0;
-    const targetEmgTotal = (targetExp + currentEmis) * 6;
-    const emgGap = Math.max(0, targetEmgTotal - currentEmg);
-    const incomeNum = Number(formData.monthly_income) || r.income || 1;
+    const diagFlags = features?.diagnosis_flags || {};
+    const xai = r.explainable_ai || {};
+    const incomeNum = r.income || 1;
+
+    const allActions = [
+      ...(prioritized_actions?.Immediate_Actions || []).map(a => ({ ...a, tier: 'immediate' })),
+      ...(prioritized_actions?.Mid_Term_Actions || []).map(a => ({ ...a, tier: 'mid' })),
+      ...(prioritized_actions?.Long_Term_Actions || []).map(a => ({ ...a, tier: 'long' })),
+    ];
+
+    const tierConfig = {
+      immediate: { label: 'Act Now', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)' },
+      mid: { label: 'This Quarter', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)' },
+      long: { label: 'Long Term', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.3)' },
+    };
 
     return (
       <div className="adv-page">
@@ -275,153 +305,441 @@ export default function FinancialAdvisor() {
           <button className="adv-reset-btn" onClick={reset}>← Re-analyse</button>
         </header>
 
-        <div className="adv-dashboard glass-dashboard">
+        <div className="adv-dashboard">
 
-          {/* 📊 FINANCIAL STATUS */}
-          <div className="adv-row adv-row-3">
-             <div className="adv-card center-card metric-card">
-               <h3 className="card-sec-title">Financial Stress Level</h3>
-               <div className={`status-text ${fh.financial_stress_level === 'High' ? 'text-red' : 'text-green'}`}>
-                  {fh.financial_stress_level || 'Unknown'}
-               </div>
-             </div>
-             <div className="adv-card center-card metric-card">
-               <h3 className="card-sec-title">Risk Capacity</h3>
-               <div className="status-text text-blue">{r.riskTier}</div>
-             </div>
-             <div className="adv-card center-card metric-card">
-               <h3 className="card-sec-title">Emergency Readiness</h3>
-               <div className={`status-text ${r.emergencyCoverage < 3 ? 'text-red' : r.emergencyCoverage < 6 ? 'text-orange' : 'text-green'}`}>
-                  {r.emergencyCoverage < 3 ? 'Critical' : r.emergencyCoverage < 6 ? 'Needs Work' : 'Adequate'}
-               </div>
-             </div>
+          {/* Dashboard Title */}
+          <div className="dashboard-title-wrap">
+            <h1 className="dashboard-title">Financial Health Dashboard</h1>
+            <p className="dashboard-subtitle">Personalized analysis based on your financial data · {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
           </div>
-          
-          {/* 🔴 PRIORITY 1 */}
-          {prioritized_actions?.Immediate_Actions?.length > 0 && (
-          <div className="adv-card full-card urgent-action-card glow-red">
-             <h3 className="card-sec-title text-red">🔴 PRIORITY 1: Build Emergency Safety</h3>
-             <p className="urgent-text">{prioritized_actions.Immediate_Actions[0].action}</p>
-             <div className="emg-stats-grid">
-               <div className="emg-stat">
-                  <span className="stat-lbl">Target</span>
-                  <span className="stat-val">₹{targetEmgTotal.toLocaleString('en-IN')}</span>
-               </div>
-               <div className="emg-stat">
-                  <span className="stat-lbl">Current</span>
-                  <span className="stat-val">₹{currentEmg.toLocaleString('en-IN')}</span>
-               </div>
-               <div className="emg-stat">
-                  <span className="stat-lbl">Gap</span>
-                  <span className="stat-val text-red">₹{emgGap.toLocaleString('en-IN')}</span>
-               </div>
-               <div className="emg-stat highlight-stat">
-                  <span className="stat-lbl">Monthly Allocation Needed</span>
-                  <span className="stat-val">₹{cashFlow.emergency.toLocaleString('en-IN')}</span>
-               </div>
-             </div>
-          </div>
-          )}
 
-          {/* 💰 Reallocation Plan */}
-          <div className="adv-card full-card reallocation-card">
-             <h3 className="card-sec-title">💰 Reallocation Plan</h3>
-             <ul className="reallocation-list">
-                {expDiff > 0 && (
-                  <li>
-                    <span className="realloc-icon">📉</span>
-                    <span className="realloc-desc">Reduce discretionary spending:</span>
-                    <strong className="realloc-amt text-green">₹{Math.round(expDiff).toLocaleString('en-IN')}</strong>
-                  </li>
-                )}
-                {cashFlow.sip_equity > 0 && (
-                  <li>
-                    <span className="realloc-icon">📈</span>
-                    <span className="realloc-desc">Optimize Equity SIP to:</span>
-                    <strong className="realloc-amt">₹{cashFlow.sip_equity.toLocaleString('en-IN')}</strong>
-                  </li>
-                )}
-                {cashFlow.fd_debt > 0 && (
-                  <li>
-                    <span className="realloc-icon">🛡️</span>
-                    <span className="realloc-desc">Optimize Debt/FD to:</span>
-                    <strong className="realloc-amt">₹{cashFlow.fd_debt.toLocaleString('en-IN')}</strong>
-                  </li>
-                )}
-                {cashFlow.emergency > 0 && (
-                  <li>
-                    <span className="realloc-icon">🚨</span>
-                    <span className="realloc-desc">Redirect to Emergency Fund:</span>
-                    <strong className="realloc-amt">₹{cashFlow.emergency.toLocaleString('en-IN')}</strong>
-                  </li>
-                )}
-             </ul>
-          </div>
-          
-          {/* 🏦 Where To Store Emergency Fund? */}
-          {cashFlow.emergency > 0 && (
-          <div className="adv-card full-card storage-card">
-             <h3 className="card-sec-title">🏦 Where To Store Emergency Fund?</h3>
-             <ul className="storage-tree">
-               <li>
-                 <span className="storage-amt">₹{Math.round((emgSplit.Savings_Account/100) * cashFlow.emergency).toLocaleString('en-IN')}</span>
-                 <span className="storage-dest">→ High-interest savings account ({emgSplit.Savings_Account}%)</span>
-               </li>
-               <li>
-                 <span className="storage-amt">₹{Math.round((emgSplit.Liquid_MF/100) * cashFlow.emergency).toLocaleString('en-IN')}</span>
-                 <span className="storage-dest">→ Liquid mutual fund ({emgSplit.Liquid_MF}%)</span>
-               </li>
-               <li>
-                 <span className="storage-amt">₹{Math.round((emgSplit.Short_Term_FD/100) * cashFlow.emergency).toLocaleString('en-IN')}</span>
-                 <span className="storage-dest">→ Short-term FD (3–6 months tenure) ({emgSplit.Short_Term_FD}%)</span>
-               </li>
-             </ul>
-          </div>
-          )}
+          {/* ── ROW 1: Health Score + Net Worth + Surplus + Savings Rate ── */}
+          <div className="adv-row adv-row-4">
 
-          {/* 🟡 Investment Strategy */}
+            {/* Health Score */}
+            <div className="adv-card metric-card">
+              <div className="metric-header">
+                <span className="metric-title">Health Score</span>
+                <span className={`metric-pill ${r.score >= 75 ? 'positive' : r.score >= 50 ? 'neutral' : 'negative'}`}>
+                  {r.score >= 75 ? 'Excellent' : r.score >= 50 ? 'Good' : 'At Risk'}
+                </span>
+              </div>
+              <div className="metric-value">{r.score}<span className="metric-unit">/100</span></div>
+              <div className="metric-trend">
+                <span className="trend-text">{fh.advisory_intensity || 'Standard Maintenance'}</span>
+                <span className="trend-sub">Risk Tier: {r.riskTier}</span>
+              </div>
+            </div>
+
+            {/* Net Worth */}
+            <div className="adv-card metric-card">
+              <div className="metric-header">
+                <span className="metric-title">Net Worth</span>
+                <span className={`metric-pill ${r.netWorth >= 0 ? 'positive' : 'negative'}`}>
+                  {r.netWorth >= 0 ? 'Positive' : 'Negative'}
+                </span>
+              </div>
+              <div className="metric-value" style={{ fontSize: r.netWorth > 9999999 ? '1.3rem' : '1.8rem' }}>
+                {r.netWorth >= 0 ? '' : '−'}₹{Math.abs(r.netWorth).toLocaleString('en-IN')}
+              </div>
+              <div className="metric-trend">
+                <span className="trend-text">Assets: ₹{(r.assets || 0).toLocaleString('en-IN')}</span>
+                <span className="trend-sub">Liabilities: ₹{(r.liabilities || 0).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            {/* Monthly Surplus */}
+            <div className="adv-card metric-card">
+              <div className="metric-header">
+                <span className="metric-title">Monthly Surplus</span>
+                <span className={`metric-pill ${r.surplusAmount > 0 ? 'positive' : 'negative'}`}>
+                  {r.savingsRatePct}% saved
+                </span>
+              </div>
+              <div className="metric-value" style={{ color: r.surplusAmount > 0 ? 'var(--green)' : 'var(--red)' }}>
+                ₹{Math.round(r.surplusAmount || 0).toLocaleString('en-IN')}
+              </div>
+              <div className="metric-trend">
+                <span className="trend-text">Income: ₹{incomeNum.toLocaleString('en-IN')}</span>
+                <span className="trend-sub">Expenses + EMIs: ₹{(r.expenses + r.emis).toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+
+            {/* Emergency Coverage */}
+            <div className="adv-card metric-card">
+              <div className="metric-header">
+                <span className="metric-title">Emergency Cover</span>
+                <span className={`metric-pill ${r.emergencyCoverage >= 6 ? 'positive' : r.emergencyCoverage >= 3 ? 'neutral' : 'negative'}`}>
+                  {r.emergencyCoverage >= 6 ? 'Adequate' : r.emergencyCoverage >= 3 ? 'Partial' : 'Critical'}
+                </span>
+              </div>
+              <div className="metric-value">
+                {r.emergencyCoverage != null ? `${r.emergencyCoverage}` : '∞'}
+                <span className="metric-unit"> mo</span>
+              </div>
+              <div className="metric-trend">
+                <span className="trend-text">
+                  {r.emergencyCoverage >= 6 ? 'You are fully protected' : `Need ${Math.max(0, (6 - (r.emergencyCoverage || 0))).toFixed(1)} more months`}
+                </span>
+                <span className="trend-sub">Target: 6 months of outflows</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── ROW 2: Score Ring + Savings Rate + Advisory ── */}
           <div className="adv-row adv-row-2">
-            <div className="adv-card strategy-card">
-               <h3 className="card-sec-title">🟡 Investment Strategy (Macro)</h3>
-               <p className="sub-note">Post-emergency recommended allocation:</p>
-               <div className="strategy-flex">
-                 <div className="strategy-chart">
-                   <DonutChart portfolio={{ Equity: portfolio.Equity, Debt: portfolio.Debt, Gold: portfolio.Gold }} />
-                 </div>
-                 <div className="strategy-text">
-                   <p><strong>Equity:</strong> {portfolio.Equity}%</p>
-                   <p><strong>Debt:</strong> {portfolio.Debt}%</p>
-                   <p><strong>Gold:</strong> {portfolio.Gold}%</p>
-                 </div>
-               </div>
+
+            {/* Score Ring + Diagnosis */}
+            <div className="adv-card">
+              <div className="card-header-flex">
+                <div>
+                  <h3 className="card-sec-title">Financial Health Overview</h3>
+                  <p className="card-sec-subtitle">Overall score and key diagnostic flags</p>
+                </div>
+              </div>
+              <div className="health-overview-body">
+                <ScoreRing score={r.score} />
+                <div className="diag-flags-grid">
+                  {Object.entries(diagFlags).map(([k, v]) => {
+                    const isGood = v.toLowerCase().includes('healthy') || v.toLowerCase().includes('resilient') || v.toLowerCase().includes('stable') || v.toLowerCase().includes('free') || v.toLowerCase().includes('liquid');
+                    const isWarn = v.toLowerCase().includes('elevated') || v.toLowerCase().includes('vulnerable') || v.toLowerCase().includes('thin') || v.toLowerCase().includes('moderate');
+                    const color = isGood ? 'var(--green)' : isWarn ? 'var(--yellow)' : 'var(--red)';
+                    const labels = {
+                      emergency_status: 'Emergency Fund',
+                      debt_stress: 'Debt Load',
+                      wealth_creation: 'Wealth Building',
+                      liquidity_status: 'Liquidity',
+                    };
+                    return (
+                      <div key={k} className="diag-flag-item">
+                        <span className="diag-flag-label">{labels[k] || k}</span>
+                        <span className="diag-flag-value" style={{ color }}>{v}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
-            
-            <div className="adv-card debt-card">
-               <h3 className="card-sec-title">🛡️ Debt Breakdown</h3>
-               <ul className="debt-breakdown-list">
-                 <li><div className="debt-pct">{portfolio.Debt_FD}%</div> <div className="debt-lbl">Fixed Deposit (FD)</div></li>
-                 <li><div className="debt-pct">{portfolio.Debt_MF}%</div> <div className="debt-lbl">Debt Mutual Fund</div></li>
-                 <li><div className="debt-pct">{portfolio.Debt_PPF}%</div> <div className="debt-lbl">PPF / Safe Anchor</div></li>
-               </ul>
+
+            {/* Savings Rate + Advisory */}
+            <div className="adv-card">
+              <div className="card-header-flex">
+                <div>
+                  <h3 className="card-sec-title">Savings Rate Analysis</h3>
+                  <p className="card-sec-subtitle">How much of your income is working for you</p>
+                </div>
+              </div>
+              <SavingsRateBar rate={r.savingsRatePct || 0} target={20} />
+
+              <div className="advisory-box">
+                <div className="advisory-icon-wrap">💡</div>
+                <div className="advisory-text-wrap">
+                  <p className="advisory-title-text">AI Advisory</p>
+                  <p className="advisory-body-text">{r.advisory}</p>
+                </div>
+              </div>
+
+              <div className="kv-grid">
+                <div className="kv-item">
+                  <span className="kv-label">Stress Level</span>
+                  <span className={`kv-value ${fh.financial_stress_level === 'High' ? 'text-red' : fh.financial_stress_level === 'Moderate' ? 'text-orange' : 'text-green'}`}>
+                    {fh.financial_stress_level || 'Low'}
+                  </span>
+                </div>
+                <div className="kv-item">
+                  <span className="kv-label">DTI Ratio</span>
+                  <span className={`kv-value ${r.dtiPct > 40 ? 'text-red' : r.dtiPct > 25 ? 'text-orange' : 'text-green'}`}>
+                    {r.dtiPct}%
+                  </span>
+                </div>
+                <div className="kv-item">
+                  <span className="kv-label">Risk Tier</span>
+                  <span className="kv-value text-blue">{r.riskTier}</span>
+                </div>
+                <div className="kv-item">
+                  <span className="kv-label">Expected Return</span>
+                  <span className="kv-value text-green">{r.annualReturnPct}% p.a.</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* 💵 Overall Plan */}
-          <div className="adv-card full-card overall-plan-card">
-             <h3 className="card-sec-title">💵 Overall Monthly Plan</h3>
-             <p className="sub-note">How your ₹{incomeNum.toLocaleString('en-IN')} should be distributed.</p>
-             <BarChart cashFlow={cashFlow} income={incomeNum} />
+          {/* ── ROW 3: Issues List (full width) ── */}
+          {r.issues && r.issues.length > 0 && (
+            <div className="adv-card full-card">
+              <div className="card-header-flex">
+                <div>
+                  <h3 className="card-sec-title">Financial Diagnostic Report</h3>
+                  <p className="card-sec-subtitle">Key issues identified across all financial dimensions</p>
+                </div>
+              </div>
+              <div className="issues-grid">
+                {r.issues.map((issue, i) => {
+                  const isGreen = issue.icon === '🟢';
+                  const isYellow = issue.icon === '🟡';
+                  const bgColor = isGreen ? 'rgba(16,185,129,0.06)' : isYellow ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.06)';
+                  const borderColor = isGreen ? 'rgba(16,185,129,0.2)' : isYellow ? 'rgba(245,158,11,0.2)' : 'rgba(239,68,68,0.2)';
+                  return (
+                    <div key={i} className="issue-card" style={{ background: bgColor, borderColor }}>
+                      <div className="issue-icon">{issue.icon}</div>
+                      <div className="issue-body">
+                        <div className="issue-label">{issue.label}</div>
+                        <div className="issue-detail">{issue.detail}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── ROW 4: Monthly Budget + Emergency Fund ── */}
+          <div className="adv-row adv-row-2">
+
+            {/* Monthly Budget Breakdown */}
+            <div className="adv-card">
+              <div className="card-header-flex">
+                <div>
+                  <h3 className="card-sec-title">Monthly Budget Breakdown</h3>
+                  <p className="card-sec-subtitle">How your ₹{incomeNum.toLocaleString('en-IN')} is distributed</p>
+                </div>
+              </div>
+              <BarChart cashFlow={cashFlow} income={incomeNum} />
+
+              {/* Unallocated surplus note */}
+              {(() => {
+                const allocated = (cashFlow.expenses || 0) + (cashFlow.emis || 0) + (cashFlow.emergency || 0) + (cashFlow.investments || 0);
+                const unallocated = Math.max(0, incomeNum - allocated);
+                return unallocated > 100 ? (
+                  <div className="surplus-note">
+                    <span className="surplus-note-icon">💰</span>
+                    <span>₹{Math.round(unallocated).toLocaleString('en-IN')}/month is unallocated — consider adding to SIP or Liquid Fund</span>
+                  </div>
+                ) : null;
+              })()}
+            </div>
+
+            {/* Emergency Fund Progress */}
+            <div className="adv-card">
+              <div className="card-header-flex">
+                <div>
+                  <h3 className="card-sec-title">Emergency Fund Progress</h3>
+                  <p className="card-sec-subtitle">Status and recommended monthly allocation</p>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="emg-progress-section">
+                <div className="emg-progress-track">
+                  <div
+                    className="emg-progress-fill"
+                    style={{
+                      width: `${Math.min(100, ((r.currentEmergencyFund || 0) / Math.max(cashFlow.target_emg_total, 1)) * 100)}%`,
+                      background: r.emergencyCoverage >= 6 ? '#10b981' : r.emergencyCoverage >= 3 ? '#f59e0b' : '#ef4444'
+                    }}
+                  />
+                </div>
+                <div className="emg-progress-labels">
+                  <span>₹{(r.currentEmergencyFund || 0).toLocaleString('en-IN')} saved</span>
+                  <span>Target: ₹{Math.round(cashFlow.target_emg_total || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              <div className="kv-grid" style={{ marginTop: '1rem' }}>
+                <div className="kv-item">
+                  <span className="kv-label">Monthly Allocation</span>
+                  <span className="kv-value">₹{Math.round(cashFlow.emergency || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="kv-item">
+                  <span className="kv-label">Gap to Fill</span>
+                  <span className="kv-value text-orange">₹{Math.round(cashFlow.emg_gap || 0).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="kv-item">
+                  <span className="kv-label">Months to Full</span>
+                  <span className="kv-value">
+                    {cashFlow.months_to_full_emg != null ? `${cashFlow.months_to_full_emg} months` : r.emergencyCoverage >= 6 ? '✅ Done' : '—'}
+                  </span>
+                </div>
+                <div className="kv-item">
+                  <span className="kv-label">Coverage</span>
+                  <span className="kv-value">{r.emergencyCoverage ?? '∞'} months</span>
+                </div>
+              </div>
+
+              {/* Placement split */}
+              {cashFlow.emergency > 0 && (
+                <div style={{ marginTop: '1.25rem' }}>
+                  <p className="kv-label" style={{ marginBottom: '0.75rem' }}>How to store it</p>
+                  <div className="list-view">
+                    <div className="list-item">
+                      <div className="list-icon-wrap blue">🏦</div>
+                      <div className="list-content">
+                        <div className="list-title">High-yield Savings</div>
+                        <div className="list-sub">{emgSplit.Savings_Account}% — instant access</div>
+                      </div>
+                      <div className="list-amount">₹{Math.round((emgSplit.Savings_Account / 100) * cashFlow.emergency).toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="list-item">
+                      <div className="list-icon-wrap green">📈</div>
+                      <div className="list-content">
+                        <div className="list-title">Liquid Mutual Fund</div>
+                        <div className="list-sub">{emgSplit.Liquid_MF}% — redeemable in 1 day</div>
+                      </div>
+                      <div className="list-amount">₹{Math.round((emgSplit.Liquid_MF / 100) * cashFlow.emergency).toLocaleString('en-IN')}</div>
+                    </div>
+                    <div className="list-item">
+                      <div className="list-icon-wrap" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.15)' }}>📜</div>
+                      <div className="list-content">
+                        <div className="list-title">Short-term FD</div>
+                        <div className="list-sub">{emgSplit.Short_Term_FD}% — 3–6 month tenure</div>
+                      </div>
+                      <div className="list-amount">₹{Math.round((emgSplit.Short_Term_FD / 100) * cashFlow.emergency).toLocaleString('en-IN')}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* ── ROW 5: Investment Strategy + Future Corpus ── */}
+          <div className="adv-row adv-row-2">
+
+            {/* Portfolio Donut */}
+            <div className="adv-card">
+              <div className="card-header-flex">
+                <div>
+                  <h3 className="card-sec-title">Recommended Portfolio Allocation</h3>
+                  <p className="card-sec-subtitle">Optimized for your risk tier: {r.riskTier}</p>
+                </div>
+              </div>
+              <DonutChart portfolio={{ Equity: portfolio.Equity, Debt: portfolio.Debt, Gold: portfolio.Gold }} />
+              <div className="kv-grid" style={{ marginTop: '1rem' }}>
+                <div className="kv-item">
+                  <span className="kv-label">FD Allocation</span>
+                  <span className="kv-value">{portfolio.Debt_FD}% of Debt</span>
+                </div>
+                <div className="kv-item">
+                  <span className="kv-label">Debt MF</span>
+                  <span className="kv-value">{portfolio.Debt_MF}% of Debt</span>
+                </div>
+                <div className="kv-item">
+                  <span className="kv-label">PPF</span>
+                  <span className="kv-value">{portfolio.Debt_PPF}% of Debt</span>
+                </div>
+                <div className="kv-item">
+                  <span className="kv-label">Monthly SIP</span>
+                  <span className="kv-value text-green">₹{Math.round(cashFlow.sip_equity || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Future Corpus */}
+            <div className="adv-card">
+              <div className="card-header-flex">
+                <div>
+                  <h3 className="card-sec-title">10-Year Corpus Projection</h3>
+                  <p className="card-sec-subtitle">If you invest ₹{Math.round(r.monthlyInvest || 0).toLocaleString('en-IN')}/month at {r.annualReturnPct}% p.a.</p>
+                </div>
+              </div>
+
+              <div className="corpus-hero">
+                <div className="corpus-value">₹{(r.futureCorpus || 0) >= 10000000
+                  ? `${((r.futureCorpus || 0) / 10000000).toFixed(2)} Cr`
+                  : (r.futureCorpus || 0) >= 100000
+                    ? `${Math.round((r.futureCorpus || 0) / 100000)} L`
+                    : Math.round(r.futureCorpus || 0).toLocaleString('en-IN')
+                }</div>
+                <div className="corpus-sub">Estimated corpus in 10 years</div>
+              </div>
+
+              <div className="corpus-breakdown">
+                <div className="corpus-row">
+                  <span>Current Investments</span>
+                  <strong>₹{(r.currentInvestments || 0).toLocaleString('en-IN')}</strong>
+                </div>
+                <div className="corpus-row">
+                  <span>Monthly SIP</span>
+                  <strong>₹{Math.round(r.monthlyInvest || 0).toLocaleString('en-IN')}</strong>
+                </div>
+                <div className="corpus-row">
+                  <span>Expected Return</span>
+                  <strong className="text-green">{r.annualReturnPct}% per year</strong>
+                </div>
+                <div className="corpus-row">
+                  <span>Horizon</span>
+                  <strong>10 years (120 months)</strong>
+                </div>
+              </div>
+
+              <div className="corpus-disclaimer">
+                ⚠️ Projections assume constant returns. Actual returns vary with market conditions.
+              </div>
+            </div>
+          </div>
+
+          {/* ── ROW 6: Prioritized Actions ── */}
+          {allActions.length > 0 && (
+            <div className="adv-card full-card">
+              <div className="card-header-flex">
+                <div>
+                  <h3 className="card-sec-title">Your Personalized Action Plan</h3>
+                  <p className="card-sec-subtitle">Ranked by severity × financial impact × urgency</p>
+                </div>
+              </div>
+              <div className="actions-list">
+                {allActions.map((act, i) => {
+                  const cfg = tierConfig[act.tier];
+                  return (
+                    <div key={i} className="action-row" style={{ background: cfg.bg, borderColor: cfg.border }}>
+                      <div className="action-index">{i + 1}</div>
+                      <div className="action-body">
+                        <span className="action-tier-badge" style={{ color: cfg.color, borderColor: cfg.border, background: cfg.bg }}>
+                          {cfg.label}
+                        </span>
+                        <p className="action-text">{act.action}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── ROW 7: AI Transparency ── */}
+          {xai?.decision_path && xai.decision_path.length > 0 && (
+            <div className="adv-card full-card">
+              <div className="card-header-flex">
+                <div>
+                  <h3 className="card-sec-title">AI Decision Transparency</h3>
+                  <p className="card-sec-subtitle">How the engine arrived at your recommendations</p>
+                </div>
+              </div>
+              <div className="decision-path">
+                {xai.decision_path.map((step, i) => (
+                  <div key={i} className="decision-step">
+                    <div className="decision-num">{i + 1}</div>
+                    <div className="decision-text">{step}</div>
+                  </div>
+                ))}
+                {xai.structured_json_grounding?.advisory_justification && (
+                  <div className="decision-step decision-justification">
+                    <div className="decision-num">💬</div>
+                    <div className="decision-text">{xai.structured_json_grounding.advisory_justification}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
         </div>
         <footer className="adv-footer">
-          <p>Generated by FINEXO AI · Core Portfolio Allocation Engine · Not Financial Advice</p>
+          <p>Generated by FINEXO AI · Core Portfolio Allocation Engine · For educational purposes only · Not financial advice</p>
         </footer>
       </div>
     );
   }
 
-  // ── FORM view ──────────────────────────────────────────────────────────────
+  // ─── FORM VIEW ──────────────────────────────────────────────────────────────
   const currentStep = STEPS[step];
 
   return (

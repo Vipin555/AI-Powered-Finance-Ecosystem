@@ -472,105 +472,87 @@ def financial_advisor_engine(data: UserFinancialData):
         
     extracted_features["emergency_fund_split"] = emg_split
 
-    # --- 5. CVXPY Cash Flow Optimization ---
-    disposable = income
-    minimum_expenses = expenses * 0.8
-    f_dscr = min(1.0, dscr / 0.5) * 0.4
-    f_emg = max(0.0, 1.0 - (emergency_fund_coverage / 3.0)) * 0.4
-    f_sav = max(0.0, 1.0 - (savings_rate / 0.2)) * 0.2
-    fragility_score = min(1.0, f_dscr + f_emg + f_sav)
-
     # --- 5. CVXPY Cash Flow Reallocation Optimization Engine ---
+    # IMPORTANT: Expenses are treated as FIXED — people cannot simply cut essential living costs.
+    # Only genuine discretionary surplus (income - expenses - emis) is available to allocate.
     disposable = income
-    minimum_expenses = expenses * 0.8
-    
-    if disposable < (minimum_expenses + emis):
-        # Extreme constraint fallback
-        total_needed = minimum_expenses + emis
-        if total_needed > 0:
-            exp_ratio = minimum_expenses / total_needed
-            emi_ratio = emis / total_needed
-            alloc_expenses = disposable * exp_ratio
-            alloc_emi = disposable * emi_ratio
-            alloc_emg = alloc_sip = alloc_fd = 0.0
-        else:
-            alloc_expenses = alloc_emi = alloc_emg = alloc_sip = alloc_fd = 0.0
+    # Expenses are NOT reducible by default. They represent committed living costs.
+    minimum_expenses = expenses  # Floor = actual expenses. No artificial 20% haircut.
+
+    # True monthly surplus after non-negotiable outflows
+    surplus = max(0, disposable - expenses - emis)
+
+    if disposable < (expenses + emis):
+        # Extreme constraint: income doesn't even cover basic outflows
+        alloc_expenses = expenses
+        alloc_emi = emis
+        alloc_emg = 0.0
+        alloc_sip = 0.0
+        alloc_fd = 0.0
+    elif surplus == 0:
+        alloc_expenses = expenses
+        alloc_emi = emis
+        alloc_emg = 0.0
+        alloc_sip = 0.0
+        alloc_fd = 0.0
     else:
-        # Decision Variables: [Expenses, SIP, Emergency, FD, Debt_Repayment]
-        alloc = cp.Variable(5)
-        
-        # Determine current equity allocation vs target
+        # Determine priorities based on financial health
         equity_underallocated = asset_allocation_pct < (portfolio["Equity"] * 0.8)
-        
-        # Weights for Priority Cases
-        w_lifestyle = 1.0
-        w_emg = 1.0
-        w_equity = 1.0
-        w_fd = 1.0
-        w_debt = 1.0
-        
-        # Decision Logic Constraints & Priorities
+
+        # ------------------------------------------------------------------
+        # REALISTIC SURPLUS ALLOCATION
+        # Rules:
+        #   Emergency capped at 40% of surplus (even in critical scenarios).
+        #   Always preserve at least 10% of surplus for investments.
+        #   Expenses output = actual expenses (never reduced).
+        # ------------------------------------------------------------------
         if emergency_fund_coverage < 3:
-            # Case A: Emergency Critical -> Priority = Liquidity
-            w_emg = 10.0
+            # Emergency is critical — divert up to 40% of surplus
+            emg_share = min(0.40, max(0.20, 0.40))
+            invest_share = max(0.10, 1.0 - emg_share)  # rest to investments
+            alloc_emg = round(surplus * emg_share, 2)
+            alloc_invest_total = round(surplus * invest_share, 2)
+        elif emergency_fund_coverage < 6:
+            # Moderate gap — 20% to emergency, rest to investments
+            emg_share = 0.20
+            alloc_emg = round(surplus * emg_share, 2)
+            alloc_invest_total = round(surplus * (1.0 - emg_share), 2)
         elif dscr > 0.40:
-            # Case C: Debt High -> Priority = EMI reduction
-            w_debt = 10.0
-        elif equity_underallocated:
-            # Case B: Equity Underallocated -> Priority = Growth
-            w_equity = 5.0
-            
-        surplus = max(0, disposable - minimum_expenses - emis)
-        
-        # Target formulations for Risk Imbalance
-        target_emg = surplus * 0.8 if w_emg > 1 else surplus * 0.1
-        target_debt = emis + (surplus * 0.8 if w_debt > 1 else 0.0)
-        target_equity = surplus * (portfolio["Equity"] / 100) if w_equity > 1 else surplus * 0.4
-        target_fd = surplus * (portfolio["Debt"] / 100)
-        
-        # Objective: Minimize lifestyle disruption + risk imbalance
-        objective = cp.Minimize(
-            w_lifestyle * cp.square(alloc[0] - expenses) + 
-            w_equity * cp.square(alloc[1] - target_equity) + 
-            w_emg * cp.square(alloc[2] - target_emg) + 
-            w_fd * cp.square(alloc[3] - target_fd) + 
-            w_debt * cp.square(alloc[4] - target_debt)
-        )
-        
-        constraints = [
-            cp.sum(alloc) == disposable,
-            alloc[0] >= minimum_expenses, # Minimum lifestyle constraint
-            alloc[0] <= expenses,
-            alloc[1] >= 0,
-            alloc[2] >= 0,
-            alloc[3] >= 0,
-            alloc[4] >= emis # Debt threshold (Base EMI must be paid)
-        ]
-        
-        prob = cp.Problem(objective, constraints)
-        try:
-            prob.solve()
-            alloc_expenses = float(alloc.value[0])
-            alloc_sip = float(alloc.value[1])
-            alloc_emg = float(alloc.value[2])
-            alloc_fd = float(alloc.value[3])
-            alloc_emi = float(alloc.value[4])
-        except Exception:
-            alloc_expenses = minimum_expenses
-            alloc_emi = emis
+            # High debt burden — minimal emergency (already OK), focus on debt
+            alloc_emg = round(surplus * 0.05, 2)
+            alloc_invest_total = round(surplus * 0.95, 2)
+        else:
+            # Healthy scenario — standard allocation
             alloc_emg = 0.0
-            alloc_sip = 0.0
-            alloc_fd = 0.0
+            alloc_invest_total = surplus
+
+        # Split investments between equity SIP and debt/FD
+        eq_ratio = portfolio["Equity"] / max(portfolio["Equity"] + portfolio["Debt"], 1)
+        alloc_sip = round(alloc_invest_total * eq_ratio, 2)
+        alloc_fd = round(alloc_invest_total * (1.0 - eq_ratio), 2)
+
+        alloc_expenses = expenses  # Always the actual expense amount
+        alloc_emi = emis           # Always the actual EMI amount
             
+    alloc_inv = alloc_sip + alloc_fd
+
+    # Calculate how many months to fill emergency fund gap
+    target_emg_total = fixed_outflows * 6
+    emg_gap = max(0, target_emg_total - emergency)
+    months_to_full_emg = math.ceil(emg_gap / alloc_emg) if alloc_emg > 0 else None
+
     cashFlow = {
         "expenses": round(alloc_expenses, 2),
         "emis": round(alloc_emi, 2),
         "emergency": round(alloc_emg, 2),
-        "investments": round(alloc_sip + alloc_fd, 2),
+        "investments": round(alloc_inv, 2),
         "sip_equity": round(alloc_sip, 2),
-        "fd_debt": round(alloc_fd, 2)
+        "fd_debt": round(alloc_fd, 2),
+        "surplus": round(surplus, 2),
+        "target_emg_total": round(target_emg_total, 2),
+        "emg_gap": round(emg_gap, 2),
+        "months_to_full_emg": months_to_full_emg,
     }
-    alloc_inv = alloc_sip + alloc_fd
 
     # --- 6. Diagnosis Issues ---
     issues = []
@@ -718,24 +700,37 @@ def financial_advisor_engine(data: UserFinancialData):
     if stress_points >= 4: advisory = "High financial stress detected. Focus immediately on liquidity and debt reduction."
     elif stress_points >= 2: advisory = "Moderate stress. Optimize debt and build emergency reserves."
 
+    net_worth = assets - liabilities
+
     return {
         "score": score,
         "riskTier": risk_tier,
         "riskScore": risk_score,
         "issues": issues,
         "savingsRate": actual_savings_rate,
+        "savingsRatePct": round(actual_savings_rate * 100, 1),
         "dti": dscr,
+        "dtiPct": round(dscr * 100, 1),
         "liquidityRatio": liquidity_ratio if liquidity_ratio != float('inf') else None,
-        "emergencyCoverage": emergency_fund_coverage if emergency_fund_coverage != float('inf') else None,
+        "emergencyCoverage": round(emergency_fund_coverage, 1) if emergency_fund_coverage != float('inf') else None,
         "portfolio": portfolio,
         "cashFlow": cashFlow,
-        "prioritized_actions": actions, # Replaces old generic actions
+        "prioritized_actions": actions,
         "explainable_ai": explainable_ai,
-        "futureCorpus": future_corpus,
-        "monthlyInvest": monthly_invest,
+        "futureCorpus": round(future_corpus, 2),
+        "monthlyInvest": round(monthly_invest, 2),
         "annualReturn": round(annual_return, 4),
-        "netSavings": surplus,
+        "annualReturnPct": round(annual_return * 100, 2),
+        "netSavings": round(surplus, 2),
+        "surplusAmount": round(surplus, 2),
         "income": income,
+        "expenses": expenses,
+        "emis": emis,
+        "assets": assets,
+        "liabilities": liabilities,
+        "netWorth": round(net_worth, 2),
+        "currentInvestments": investments,
+        "currentEmergencyFund": emergency,
         "age": age,
         "advisory": advisory,
         "features": extracted_features

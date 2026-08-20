@@ -1,420 +1,524 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './index.css';
 
-const floatingIcons = [
-  { id: 1, icon: "₿", top: "20%", left: "15%", delay: "0s" },
-  { id: 2, icon: "Ξ", top: "60%", left: "10%", delay: "1s" },
-  { id: 3, icon: "₮", top: "30%", left: "85%", delay: "2s" },
-  { id: 4, icon: "📈", top: "70%", left: "80%", delay: "1.5s" },
-  { id: 5, icon: "🏦", top: "15%", left: "50%", delay: "0.5s" },
+// ─── Engine definitions (hardcoded so they always show) ───────────────────────
+const ENGINES = [
+  {
+    id: 'financial-advisor',
+    name: 'AI Financial Advisor',
+    tagline: 'Personal wealth intelligence',
+    description: 'Analyze your income, expenses, assets and liabilities. Get your health score, risk tier, emergency plan, and 10-year corpus projection.',
+    icon: '🧠',
+    color: '#6366f1',
+    glow: 'rgba(99, 102, 241, 0.28)',
+    href: '/advisor',
+    tag: 'Most Used',
+    stats: [{ label: 'Metrics Analyzed', value: '40+' }, { label: 'Avg Health Score', value: '74' }],
+  },
+  {
+    id: 'tax-planning',
+    name: 'AI Tax Planner',
+    tagline: 'Maximize your take-home',
+    description: 'Compare Old vs New tax regimes, optimize deductions across 80C, 80D, NPS, HRA, capital gains, and get your exact tax liability.',
+    icon: '⚖️',
+    color: '#f59e0b',
+    glow: 'rgba(245, 158, 11, 0.25)',
+    href: '/tax',
+    tag: 'Tax Season',
+    stats: [{ label: 'Max Savings', value: '₹2.5L' }, { label: 'Deductions', value: '12 types' }],
+  },
+  {
+    id: 'life-goal',
+    name: 'Life Goal Simulator',
+    tagline: 'Turn dreams into timelines',
+    description: 'Model retirement, education, home purchase and more. Monte Carlo simulation computes your success probability with inflation-adjusted targets.',
+    icon: '🎯',
+    color: '#ec4899',
+    glow: 'rgba(236, 72, 153, 0.25)',
+    href: '/simulator',
+    tag: 'Planning',
+    stats: [{ label: 'Goal Types', value: '10+' }, { label: 'Sim Accuracy', value: '94%' }],
+  },
+  {
+    id: 'portfolio-growth',
+    name: 'Portfolio Dashboard',
+    tagline: 'Track & rebalance wealth',
+    description: 'View your portfolio allocation, ML-based rebalancing recommendations, and expected 5-year returns across equity, debt, gold, and cash.',
+    icon: '📊',
+    color: '#06b6d4',
+    glow: 'rgba(6, 182, 212, 0.25)',
+    href: '/portfolio',
+    tag: 'Investments',
+    stats: [{ label: 'Asset Classes', value: '4' }, { label: 'Rebalance AI', value: 'Live' }],
+  },
+  {
+    id: 'irregular-income',
+    name: 'Irregular Income Engine',
+    tagline: 'Finances for the self-employed',
+    description: 'Built for freelancers, gig workers, and business owners. Smooth volatile income, build buffers, and create a stable financial plan from unpredictable earnings.',
+    icon: '🌊',
+    color: '#10b981',
+    glow: 'rgba(16, 185, 129, 0.25)',
+    href: '/irregular-income',
+    tag: 'Freelancers',
+    stats: [{ label: 'Income Types', value: '5' }, { label: 'Buffer Months', value: '3–6' }],
+  },
 ];
 
-// Default payloads for each engine (used when clicking "Initialize Engine")
-const ENGINE_DEFAULTS = {
-  "financial-advisor": {
-    endpoint: "http://localhost:8000/api/advisor",
-    payload: {
-      monthly_income: 80000,
-      monthly_expenses: 30000,
-      total_emis: 10000,
-      total_assets: 500000,
-      total_liabilities: 200000,
-      current_investments: 150000,
-      emergency_fund: 90000,
-      age: 32
-    }
-  },
-  "tax-planning": {
-    endpoint: "http://localhost:8000/api/tax",
-    payload: {
-      annual_income: 1200000,
-      age: 32,
-      current_80c: 100000,
-      current_80d: 15000,
-      current_nps: 30000,
-      hra_exemption: 60000,
-      home_loan_interest: 150000,
-      education_loan_interest: 0
-    }
-  },
-  "life-goal": {
-    endpoint: "http://localhost:8000/api/simulator",
-    payload: {
-      goals: [
-        { name: "Retirement", target_amount_today: 5000000, years_to_goal: 25, inflation_rate: 0.06 },
-        { name: "Child Education", target_amount_today: 2000000, years_to_goal: 15, inflation_rate: 0.08 }
-      ],
-      current_corpus: 300000,
-      monthly_sip: 15000,
-      user_iss: 0.8,
-      user_fragility: 0.3
-    }
-  },
-  "portfolio-growth": {
-    endpoint: "http://localhost:8000/api/advisor",
-    payload: {
-      monthly_income: 120000,
-      monthly_expenses: 40000,
-      total_emis: 5000,
-      total_assets: 1500000,
-      total_liabilities: 100000,
-      current_investments: 800000,
-      emergency_fund: 240000,
-      age: 35
-    }
-  },
-  "irregular-income": {
-    endpoint: "http://localhost:8000/api/advisor",
-    payload: {
-      monthly_income: 60000,
-      monthly_expenses: 35000,
-      total_emis: 8000,
-      total_assets: 200000,
-      total_liabilities: 150000,
-      current_investments: 50000,
-      emergency_fund: 30000,
-      age: 28
-    }
-  },
-  "chatbot": {
-    endpoint: "http://localhost:8000/api/advisor",
-    payload: {
-      monthly_income: 70000,
-      monthly_expenses: 28000,
-      total_emis: 12000,
-      total_assets: 400000,
-      total_liabilities: 180000,
-      current_investments: 100000,
-      emergency_fund: 60000,
-      age: 30
-    }
-  }
-};
-
-function formatResultValue(val) {
-  if (typeof val === 'number') return val.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-  if (typeof val === 'boolean') return val ? 'Yes' : 'No';
-  return String(val);
-}
-
-function ResultDisplay({ data, depth = 0 }) {
-  if (data === null || data === undefined) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
-  if (Array.isArray(data)) {
-    return (
-      <div style={{ marginLeft: depth * 12 }}>
-        {data.map((item, i) => (
-          <div key={i} style={{ marginBottom: '0.75rem', padding: '0.75rem', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <ResultDisplay data={item} depth={depth + 1} />
-          </div>
-        ))}
-      </div>
-    );
-  }
-  if (typeof data === 'object') {
-    return (
-      <div style={{ marginLeft: depth * 12 }}>
-        {Object.entries(data).map(([key, val]) => (
-          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)', gap: '1rem', flexWrap: 'wrap' }}>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textTransform: 'capitalize', minWidth: '140px' }}>
-              {key.replace(/_/g, ' ')}
-            </span>
-            <span style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '0.9rem', textAlign: 'right', flex: 1 }}>
-              {typeof val === 'object' ? <ResultDisplay data={val} depth={depth + 1} /> : formatResultValue(val)}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return <span style={{ color: 'var(--accent-primary)', fontWeight: '600' }}>{formatResultValue(data)}</span>;
-}
-
-function App() {
-  const [engines, setEngines] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedEngine, setSelectedEngine] = useState(null);
-  const [engineResult, setEngineResult] = useState(null);
-  const [engineLoading, setEngineLoading] = useState(false);
-  const [engineError, setEngineError] = useState(null);
-  const [activeTab, setActiveTab] = useState('all');
+// ─── Animated number counter ──────────────────────────────────────────────────
+function AnimatedNumber({ end, suffix = '', prefix = '' }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/engines')
-      .then(res => res.json())
-      .then(data => {
-        setEngines(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Error fetching engines:", err);
-        setLoading(false);
-      });
-  }, []);
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        let start = 0;
+        const duration = 1800;
+        const startTime = performance.now();
+        const animate = (now) => {
+          const elapsed = now - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          setCount(Math.round(eased * end));
+          if (progress < 1) requestAnimationFrame(animate);
+        };
+        requestAnimationFrame(animate);
+        observer.disconnect();
+      }
+    }, { threshold: 0.4 });
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [end]);
 
-  const handleEngineClick = (engine) => {
-    if (engine.id === 'financial-advisor') {
-      window.open('/advisor', '_blank');
-      return;
-    }
-    if (engine.id === 'tax-planning') {
-      window.open('/tax', '_blank');
-      return;
-    }
-    if (engine.id === 'life-goal') {
-      window.open('/simulator', '_blank');
-      return;
-    }
-    if (engine.id === 'portfolio-growth') {
-      window.open('/portfolio', '_blank');
-      return;
-    }
-    if (engine.id === 'irregular-income') {
-      window.open('/irregular-income', '_blank');
-      return;
-    }
-    setSelectedEngine(engine);
-    setEngineResult(null);
-    setEngineError(null);
-  };
+  return <span ref={ref}>{prefix}{count.toLocaleString('en-IN')}{suffix}</span>;
+}
 
-  const closeModal = () => {
-    setSelectedEngine(null);
-    setEngineResult(null);
-    setEngineError(null);
-    setEngineLoading(false);
-  };
+// ─── 3D Canvas with floating investment symbols ───────────────────────
+function Canvas3D() {
+  const canvasRef = useRef(null);
 
-  const handleInitializeEngine = async () => {
-    if (!selectedEngine) return;
-    const config = ENGINE_DEFAULTS[selectedEngine.id];
-    if (!config) {
-      setEngineError("No configuration found for this engine.");
-      return;
-    }
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let animFrame;
+    let t = 0;
 
-    setEngineLoading(true);
-    setEngineResult(null);
-    setEngineError(null);
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
 
-    try {
-      const response = await fetch(config.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config.payload)
-      });
+    // Floating 3D investment symbols
+    const SYMBOLS = ['₹','₹','$','$','€','₿','%','%','NSE','BSE','SIP','TCS','INFY','RELIANCE','NIFTY','GOLD','ETF','NAV','₹₹','▲','▼','MF'];
+    const symbols = Array.from({ length: 28 }, (_, idx) => ({
+      sym: SYMBOLS[idx % SYMBOLS.length],
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      z: Math.random() * 400 + 100,
+      dx: (Math.random() - 0.5) * 0.4,
+      dy: (Math.random() - 0.5) * 0.3 - 0.15,
+      rotSpeed: (Math.random() - 0.5) * 0.015,
+      rot: Math.random() * Math.PI * 2,
+      color: ['rgba(99,102,241,','rgba(245,158,11,','rgba(236,72,153,','rgba(6,182,212,','rgba(139,92,246,'][Math.floor(Math.random() * 5)],
+      size: Math.random() * 14 + 9,
+    }));
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || `Server error: ${response.status}`);
+    // Small ambient particles
+    const particles = Array.from({ length: 90 }, () => ({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.5 + 0.3,
+      speed: Math.random() * 0.3 + 0.05,
+      angle: Math.random() * Math.PI * 2,
+      opacity: Math.random() * 0.45 + 0.08,
+      color: '#6366f1',
+    }));
+
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      t += 0.005;
+
+      // Grid lines
+      ctx.strokeStyle = 'rgba(255,255,255,0.022)';
+      ctx.lineWidth = 1;
+      const gridSpacing = 80;
+      for (let x = 0; x < canvas.width; x += gridSpacing) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += gridSpacing) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
       }
 
-      const result = await response.json();
-      setEngineResult(result);
-    } catch (err) {
-      console.error("Engine initialization error:", err);
-      setEngineError(
-        err.message.includes('fetch')
-          ? "⚠️ Could not reach the Python backend. Make sure it is running on port 8000 (`uvicorn main:app --reload`)."
-          : `⚠️ ${err.message}`
-      );
-    } finally {
-      setEngineLoading(false);
-    }
-  };
+      // Draw 3D investment symbols
+      symbols.forEach(s => {
+        const perspective = 600 / (600 + s.z);
+        const displaySize = s.size * perspective;
+        const alpha = perspective * 0.55;
 
+        s.x += s.dx;
+        s.y += s.dy;
+        s.rot += s.rotSpeed;
+
+        if (s.x < -60) s.x = canvas.width + 60;
+        if (s.x > canvas.width + 60) s.x = -60;
+        if (s.y < -40) s.y = canvas.height + 40;
+        if (s.y > canvas.height + 40) s.y = -40;
+
+        ctx.save();
+        ctx.translate(s.x, s.y);
+        ctx.rotate(s.rot);
+        ctx.font = `${Math.round(displaySize)}px 'Outfit', monospace`;
+        ctx.fillStyle = s.color + alpha.toFixed(2) + ')';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.fillStyle = s.color + (alpha * 0.3).toFixed(2) + ')';
+        ctx.fillText(s.sym, 2, 2);
+        ctx.fillStyle = s.color + alpha.toFixed(2) + ')';
+        ctx.fillText(s.sym, 0, 0);
+        ctx.restore();
+      });
+
+      // Ambient particles
+      particles.forEach(p => {
+        p.angle += 0.005;
+        p.x += Math.cos(p.angle) * p.speed;
+        p.y += Math.sin(p.angle) * p.speed * 0.5 - 0.15;
+        if (p.y < -10) p.y = canvas.height + 10;
+        if (p.x < -10) p.x = canvas.width + 10;
+        if (p.x > canvas.width + 10) p.x = -10;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${p.opacity})`;
+        ctx.fill();
+      });
+
+      animFrame = requestAnimationFrame(draw);
+    };
+
+    draw();
+    return () => { cancelAnimationFrame(animFrame); window.removeEventListener('resize', resize); };
+  }, []);
+
+  return <canvas ref={canvasRef} className="canvas-3d" />;
+}
+
+// ─── Marquee ticker ────────────────────────────────────────────────────────────
+const TICKER_ITEMS = [
+  '₹NIFTY 24,823 ▲ +0.42%', 'SENSEX 81,343 ▲ +0.38%', 'GOLD ₹74,320/10g ▲ +0.12%',
+  'USD/INR 83.94 ▼ -0.08%', 'REPO RATE 6.50% →', '10Y BOND 7.08% ▲',
+  'SGB Apr-2025 ₹8,634 ▲', 'NIFTY BANK 52,480 ▲ +0.55%', 'MIDCAP 150 ▲ +0.61%',
+];
+
+function Ticker() {
   return (
-    <div className="app-container">
-      {/* Background visual effects */}
-      <div className="background-effects">
-        <div className="glow-orb"></div>
-        <div className="concentric-circles">
-          <div className="circle"></div>
-          <div className="circle"></div>
-          <div className="circle"></div>
-          <div className="circle"></div>
-          <div className="circle"></div>
-          <div className="circle"></div>
-          <div className="circle"></div>
-        </div>
-        
-        {floatingIcons.map(item => (
-          <div 
-            key={item.id} 
-            className="floating-icon" 
-            style={{ top: item.top, left: item.left, animationDelay: item.delay }}
-          >
-            {item.icon}
-          </div>
-        ))}
-      </div>
-
-      {/* Navigation */}
-      <nav className="navbar">
-        <div className="logo-container">
-          <div className="logo-icon">F</div>
-          FINEXO
-        </div>
-        <div className="nav-links">
-          <a href="#" className="active" onClick={(e) => { e.preventDefault(); window.scrollTo({top: 0, behavior: 'smooth'}); }}>Home</a>
-          <a href="#ecosystem" onClick={(e) => { e.preventDefault(); document.getElementById('ecosystem').scrollIntoView({ behavior: 'smooth' }); }}>Ecosystem</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); alert("Performance analytics module coming soon!"); }}>Performance</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); alert("Premium membership features are locked for guest users."); }}>Membership</a>
-        </div>
-        <button className="nav-action" onClick={(e) => {
-          e.target.innerText = "Wallet Connected ✅";
-          e.target.style.background = "var(--green)";
-          e.target.style.color = "#fff";
-        }}>Connect Wallet</button>
-      </nav>
-
-      {/* Hero */}
-      <section className="hero-section">
-        <div className="hero-badge">✨ Revolutionizing AI Finance</div>
-        <h1 className="hero-title">
-          The Future of <span>Digital Wealth</span>
-        </h1>
-        <p className="hero-subtitle">
-          Explore real-time insights, groundbreaking innovations, and the latest trends in personal finance—all powered by an intelligent ecosystem.
-        </p>
-        <button className="cta-button" onClick={() => document.getElementById('ecosystem').scrollIntoView({ behavior: 'smooth' })}>
-          Explore Ecosystem
-          <div className="icon-wrapper">→</div>
-        </button>
-      </section>
-
-      {/* Dashboard / Ecosystem */}
-      <section id="ecosystem" className="dashboard-section">
-        <div className="dashboard-header">
-          <h2 className="dashboard-title">
-            <span>Our AI Engines</span>
-            <span style={{ fontSize: '1rem', color: 'var(--accent-primary)', background: 'rgba(242, 102, 34, 0.1)', padding: '0.2rem 0.6rem', borderRadius: '10px' }}>PRO</span>
-          </h2>
-          <div className="dashboard-tabs">
-            <div className={`tab ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')}>All Apps</div>
-            <div className={`tab ${activeTab === 'favorites' ? 'active' : ''}`} onClick={() => setActiveTab('favorites')}>Favorites</div>
-            <div className={`tab ${activeTab === 'recent' ? 'active' : ''}`} onClick={() => setActiveTab('recent')}>Recent</div>
-          </div>
-        </div>
-
-        {loading ? (
-          <div className="loading-spinner"></div>
-        ) : (
-          <div className="engines-grid">
-            {engines
-              .filter(engine => activeTab === 'all' || (activeTab === 'favorites' && ['financial-advisor', 'tax-planning'].includes(engine.id)) || (activeTab === 'recent' && ['life-goal'].includes(engine.id)))
-              .map((engine) => (
-              <div key={engine.id} className="engine-card" onClick={() => handleEngineClick(engine)}>
-                <div className="card-header">
-                  <div className="card-icon">{engine.icon}</div>
-                  <div className="status-badge">
-                    <span className="status-dot"></span>
-                    {engine.status}
-                  </div>
-                </div>
-                <div className="card-content">
-                  <h3 className="card-title">{engine.name}</h3>
-                  <p className="card-desc">{engine.description}</p>
-                </div>
-                <div className="card-footer">
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>AI Powered</div>
-                  <div className="card-action">
-                    Launch <i style={{ fontStyle: 'normal' }}>→</i>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {engines.filter(engine => activeTab === 'all' || (activeTab === 'favorites' && ['financial-advisor', 'tax-planning'].includes(engine.id)) || (activeTab === 'recent' && ['life-goal'].includes(engine.id))).length === 0 && (
-              <div style={{color: 'var(--text-muted)', gridColumn: '1 / -1', textAlign: 'center', padding: '3rem 0', background: 'rgba(255,255,255,0.02)', borderRadius: '12px'}}>
-                No apps found in this category.
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* Modal for Engine Details */}
-      <div className={`modal-overlay ${selectedEngine ? 'active' : ''}`} onClick={closeModal}>
-        <div className="modal-content" onClick={e => e.stopPropagation()}>
-          <button className="modal-close" onClick={closeModal}>✕</button>
-          {selectedEngine && (
-            <div style={{ padding: '2rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '2rem' }}>
-                <div className="card-icon" style={{ width: '80px', height: '80px', fontSize: '2.5rem' }}>
-                  {selectedEngine.icon}
-                </div>
-                <div>
-                  <h2 style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>{selectedEngine.name}</h2>
-                  <div className="status-badge" style={{ display: 'inline-flex' }}>
-                    <span className="status-dot"></span> System Online
-                  </div>
-                </div>
-              </div>
-              
-              <div style={{ background: 'rgba(0,0,0,0.3)', padding: '2rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <h3 style={{ color: 'var(--accent-primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '1.2rem' }}>⚙️</span> Dashboard Interface
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '2rem' }}>
-                  {selectedEngine.description}
-                </p>
-                
-                {/* Result / Loading / Error area */}
-                {engineLoading && (
-                  <div style={{ height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem' }}>
-                    <div className="loading-spinner" style={{ width: '40px', height: '40px' }}></div>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Running engine analysis...</span>
-                  </div>
-                )}
-
-                {engineError && !engineLoading && (
-                  <div style={{ padding: '1rem 1.5rem', background: 'rgba(255, 80, 80, 0.1)', border: '1px solid rgba(255,80,80,0.3)', borderRadius: '12px', color: '#ff8888', fontSize: '0.9rem', lineHeight: '1.6' }}>
-                    {engineError}
-                  </div>
-                )}
-
-                {engineResult && !engineLoading && (
-                  <div style={{ maxHeight: '380px', overflowY: 'auto', paddingRight: '0.5rem' }}>
-                    <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '1rem' }}>✅</span>
-                      <span style={{ color: '#4caf8e', fontWeight: '600', fontSize: '0.95rem' }}>Engine Initialized Successfully</span>
-                    </div>
-                    <ResultDisplay data={engineResult} />
-                  </div>
-                )}
-
-                {!engineResult && !engineLoading && !engineError && (
-                  <div style={{ height: '120px', border: '1px dashed rgba(255,255,255,0.2)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', flexDirection: 'column', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '2rem' }}>⚡</span>
-                    <span>Click "Initialize Engine" to run a live analysis</span>
-                  </div>
-                )}
-              </div>
-              
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '2rem', gap: '1rem' }}>
-                {engineResult && (
-                  <button
-                    onClick={() => { setEngineResult(null); setEngineError(null); }}
-                    style={{ padding: '0.8rem 1.5rem', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', color: 'var(--text-muted)', cursor: 'pointer', transition: 'all 0.2s' }}
-                  >
-                    Reset
-                  </button>
-                )}
-                <button
-                  className="cta-button"
-                  style={{ padding: '0.8rem 2rem', opacity: engineLoading ? 0.6 : 1, cursor: engineLoading ? 'not-allowed' : 'pointer' }}
-                  onClick={handleInitializeEngine}
-                  disabled={engineLoading}
-                >
-                  {engineLoading ? 'Initializing...' : 'Initialize Engine'}
-                  <div className="icon-wrapper">{engineLoading ? '⏳' : '→'}</div>
-                </button>
-              </div>
-            </div>
-          )}
+    <div className="ticker-wrap">
+      <div className="ticker-label">LIVE</div>
+      <div className="ticker-track">
+        <div className="ticker-inner">
+          {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
+            <span key={i} className="ticker-item">
+              {item}
+              <span className="ticker-sep">·</span>
+            </span>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-export default App;
+// ─── Main App ─────────────────────────────────────────────────────────────────
+export default function App() {
+  const navigate = useNavigate();
+  const [scrolled, setScrolled] = useState(false);
+  const [heroVisible, setHeroVisible] = useState(false);
+  const [hoveredEngine, setHoveredEngine] = useState(null);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 30);
+    window.addEventListener('scroll', onScroll);
+    setTimeout(() => setHeroVisible(true), 100);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const handleEngineClick = (engine) => {
+    navigate(engine.href);
+  };
+
+  return (
+    <div className="app-root">
+
+      {/* ── 3D Canvas Background ── */}
+      <Canvas3D />
+
+      {/* ── Live Ticker ── */}
+      <Ticker />
+
+      {/* ── Navbar ── */}
+      <nav className={`v-nav ${scrolled ? 'v-nav--scrolled' : ''}`}>
+        <div className="v-nav__logo">
+          <div className="v-nav__logo-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M3 17L9 11L13 15L21 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M14 7H21V14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span className="v-nav__brand">FINEXO</span>
+          <span className="v-nav__badge">AI</span>
+        </div>
+
+        <div className="v-nav__links">
+          <a href="#" className="v-nav__link" onClick={e => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Home</a>
+          <a href="#engines" className="v-nav__link" onClick={e => { e.preventDefault(); document.getElementById('engines').scrollIntoView({ behavior: 'smooth' }); }}>Engines</a>
+        </div>
+
+        <button className="v-nav__cta" onClick={() => document.getElementById('engines').scrollIntoView({ behavior: 'smooth' })}>
+          Get Started
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </nav>
+
+      {/* ── Hero Section ── */}
+      <section className={`v-hero ${heroVisible ? 'v-hero--visible' : ''}`}>
+
+        {/* Announcement pill */}
+        <div className="v-hero__pill" style={{ animationDelay: '0.1s' }}>
+          <span className="v-hero__pill-dot"></span>
+          AI-Powered · Rule-Based · No Black Boxes
+        </div>
+
+        {/* Heading */}
+        <h1 className="v-hero__title" style={{ animationDelay: '0.2s' }}>
+          Your Money,<br />
+          <span className="v-hero__title-gradient">Intelligently Managed</span>
+        </h1>
+
+        <p className="v-hero__sub" style={{ animationDelay: '0.35s' }}>
+          Four specialized AI engines for financial advising, tax optimization,<br />
+          life goal simulation, and portfolio management — built for India.
+        </p>
+
+        {/* CTA Row */}
+        <div className="v-hero__cta-row" style={{ animationDelay: '0.5s' }}>
+          <button className="v-btn v-btn--primary" onClick={() => document.getElementById('engines').scrollIntoView({ behavior: 'smooth' })}>
+            Explore Engines
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <button className="v-btn v-btn--ghost" onClick={() => navigate('/advisor')}>
+            Try Advisor Free →
+          </button>
+        </div>
+
+
+        {/* Floating finance metrics mockup */}
+        <div className="v-hero__mockup" style={{ animationDelay: '0.4s' }}>
+          <div className="v-mockup">
+            <div className="v-mockup__header">
+              <div className="v-mockup__dots">
+                <span></span><span></span><span></span>
+              </div>
+              <span className="v-mockup__title">Financial Dashboard</span>
+            </div>
+            <div className="v-mockup__body">
+              <div className="v-mockup__row">
+                <span className="v-mockup__label">Health Score</span>
+                <span className="v-mockup__value green">82 / 100</span>
+              </div>
+              <div className="v-mockup__row">
+                <span className="v-mockup__label">Net Worth</span>
+                <span className="v-mockup__value">₹12,40,000</span>
+              </div>
+              <div className="v-mockup__row">
+                <span className="v-mockup__label">Monthly Surplus</span>
+                <span className="v-mockup__value green">₹18,500</span>
+              </div>
+              <div className="v-mockup__row">
+                <span className="v-mockup__label">10Y Corpus</span>
+                <span className="v-mockup__value gold">₹89.4 L</span>
+              </div>
+              <div className="v-mockup__bar-section">
+                <div className="v-mockup__bar-label">Portfolio Allocation</div>
+                <div className="v-mockup__bars">
+                  <div className="v-mockup__bar" style={{ width: '55%', background: '#3b82f6' }}><span>Equity 55%</span></div>
+                  <div className="v-mockup__bar" style={{ width: '30%', background: '#10b981' }}><span>Debt 30%</span></div>
+                  <div className="v-mockup__bar" style={{ width: '15%', background: '#f59e0b' }}><span>Gold 15%</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Floating info pills */}
+          <div className="v-float-pill v-float-pill--1">
+            <span className="v-float-pill__icon">📈</span>
+            <span>SIP: ₹8,000/mo</span>
+          </div>
+          <div className="v-float-pill v-float-pill--2">
+            <span className="v-float-pill__icon">🛡️</span>
+            <span>Emergency: 6.2 mo</span>
+          </div>
+          <div className="v-float-pill v-float-pill--3">
+            <span className="v-float-pill__icon">⚖️</span>
+            <span>Tax saved: ₹42,000</span>
+          </div>
+        </div>
+      </section>
+
+
+
+      {/* ── Engines Section ── */}
+      <section id="engines" className="v-engines">
+        <div className="v-section-header">
+          <div className="v-section-badge">AI Engines</div>
+          <h2 className="v-section-title">Five Engines. One Ecosystem.</h2>
+          <p className="v-section-sub">Each engine runs its own optimization model. Click any card to launch it instantly.</p>
+        </div>
+
+        <div className="v-engines__grid">
+          {ENGINES.map((engine, i) => (
+            <div
+              key={engine.id}
+              className={`v-engine-card ${hoveredEngine === engine.id ? 'v-engine-card--hovered' : ''}`}
+              style={{ '--engine-color': engine.color, '--engine-glow': engine.glow, animationDelay: `${i * 0.1}s` }}
+              onClick={() => handleEngineClick(engine)}
+              onMouseEnter={() => setHoveredEngine(engine.id)}
+              onMouseLeave={() => setHoveredEngine(null)}
+            >
+              {/* Glow top border line */}
+              <div className="v-engine-card__glow-line"></div>
+
+              <div className="v-engine-card__top">
+                <div className="v-engine-card__icon-wrap">
+                  <span className="v-engine-card__icon">{engine.icon}</span>
+                </div>
+                <span className="v-engine-card__tag">{engine.tag}</span>
+              </div>
+
+              <h3 className="v-engine-card__name">{engine.name}</h3>
+              <p className="v-engine-card__tagline">{engine.tagline}</p>
+              <p className="v-engine-card__desc">{engine.description}</p>
+
+              <div className="v-engine-card__stats">
+                {engine.stats.map((s, j) => (
+                  <div key={j} className="v-engine-card__stat">
+                    <span className="v-engine-card__stat-value">{s.value}</span>
+                    <span className="v-engine-card__stat-label">{s.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="v-engine-card__footer">
+                <span className="v-engine-card__launch">
+                  Launch Engine
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                  </svg>
+                </span>
+              </div>
+
+              {/* Corner accent */}
+              <div className="v-engine-card__corner"></div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── How It Works ── */}
+      <section className="v-how">
+        <div className="v-section-header">
+          <div className="v-section-badge">How It Works</div>
+          <h2 className="v-section-title">From Data to Decisions</h2>
+        </div>
+        <div className="v-how__steps">
+          {[
+            { step: '01', icon: '📝', title: 'Enter Your Data', desc: 'Provide your income, expenses, assets, liabilities and goals through our guided forms.' },
+            { step: '02', icon: '🤖', title: 'AI Processes', desc: 'Our engines run Mean-Variance Optimization, Monte Carlo simulation, and XGBoost predictions in real time.' },
+            { step: '03', icon: '📊', title: 'Get Your Report', desc: 'Receive a full dashboard with health scores, action plans, corpus projections, and tax savings.' },
+            { step: '04', icon: '🚀', title: 'Take Action', desc: 'Follow prioritized, ranked recommendations to systematically improve your financial health.' },
+          ].map((s, i) => (
+            <div key={i} className="v-step">
+              <div className="v-step__num">{s.step}</div>
+              <div className="v-step__icon">{s.icon}</div>
+              <h4 className="v-step__title">{s.title}</h4>
+              <p className="v-step__desc">{s.desc}</p>
+              {i < 3 && <div className="v-step__connector"></div>}
+            </div>
+          ))}
+        </div>
+      </section>
+
+
+      {/* ── PLANITT-style Footer ── */}
+      <footer className="v-footer-new">
+
+        {/* Ghost watermark text */}
+        <div className="v-footer-new__ghost">FINEXO</div>
+
+        {/* Horizon glow line */}
+        <div className="v-footer-new__horizon"></div>
+
+        {/* Market exchange tags */}
+        <div className="v-footer-new__markets">
+          {[
+            { city: 'MUMBAI', ex: 'NSE · BSE', active: true },
+            { city: 'NEW YORK', ex: 'NYSE · NASDAQ', active: true },
+            { city: 'LONDON', ex: 'LSE · ACTIVE', active: true },
+            { city: 'SINGAPORE', ex: 'SGX · ACTIVE', active: true },
+            { city: 'HONG KONG', ex: 'HKEX · ACTIVE', active: true },
+          ].map((m, i) => (
+            <div key={i} className="v-market-tag">
+              <span className={`v-market-tag__dot ${m.active ? 'active' : ''}`}></span>
+              <div>
+                <div className="v-market-tag__city">{m.city}</div>
+                <div className="v-market-tag__ex">{m.ex}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tagline */}
+        <div className="v-footer-new__tagline-wrap">
+          <p className="v-footer-new__tagline">Finance never sleeps.</p>
+          <p className="v-footer-new__tagline-accent">Neither does FINEXO.</p>
+          <p className="v-footer-new__sub">SEBI-AWARE · AI-POWERED · BUILT FOR INDIA</p>
+        </div>
+
+        {/* CTA row */}
+        <div className="v-footer-new__cta">
+          <button className="v-btn v-btn--primary" onClick={() => navigate('/advisor')}>
+            Start Financial Advisor
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <button className="v-btn v-btn--ghost" onClick={() => navigate('/simulator')}>Goal Simulator →</button>
+          <button className="v-btn v-btn--ghost" onClick={() => navigate('/tax')}>Tax Planner →</button>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="v-footer-new__bottom">
+          <div className="v-footer-new__brand">
+            <div className="v-nav__logo-icon" style={{ width: 28, height: 28 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M3 17L9 11L13 15L21 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <span style={{ fontFamily: 'Outfit', fontWeight: 800, fontSize: '1rem', letterSpacing: '2px' }}>FINEXO</span>
+          </div>
+          <p className="v-footer-new__disclaimer">
+            For educational purposes only · Not financial advice
+          </p>
+          <div className="v-footer-new__links">
+            <span>/advisor</span>
+            <span>/tax</span>
+            <span>/simulator</span>
+            <span>/portfolio</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
