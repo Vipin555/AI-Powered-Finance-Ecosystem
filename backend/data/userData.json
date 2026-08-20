@@ -1,0 +1,204 @@
+{
+  "user_demo_002": {
+    "advisor": {
+      "age": 29,
+      "monthly_income": 95000,
+      "monthly_expenses": 38000,
+      "total_emis": 12000,
+      "total_assets": 850000,
+      "total_liabilities": 240000,
+      "current_investments": 420000,
+      "emergency_fund": 210000,
+      "dependents": 1,
+      "monthly_sip": 18000
+    },
+    "tax": {
+      "salary_income": 1400000,
+      "business_income": 0,
+      "house_property_loss": 0,
+      "other_income": 45000,
+      "stcg": 15000,
+      "ltcg": 60000,
+      "stcg_debt": 0,
+      "ltcg_debt": 0,
+      "sec_80c": 150000,
+      "sec_80d_self": 25000,
+      "sec_80d_parents": 25000,
+      "sec_80ccd_1b": 50000,
+      "sec_80tta": 10000,
+      "sec_80g": 0,
+      "sec_24b": 0,
+      "sec_80e": 0,
+      "sec_80eea": 0,
+      "hra_exempt": 120000,
+      "lta_exempt": 0,
+      "standard_deduction": 75000,
+      "age": 29,
+      "residential_status": "Resident",
+      "regime_choice": "Auto"
+    },
+    "simulator": {
+      "goal_name": "Retirement & Wealth Independence",
+      "target_amount": 15000000,
+      "years_horizon": 15,
+      "current_savings": 850000,
+      "monthly_investment": 35000,
+      "expected_return": 12.5,
+      "inflation_rate": 6
+    },
+    "portfolio": {
+      "current_equity": 55,
+      "current_debt": 25,
+      "current_gold": 12,
+      "current_cash": 8,
+      "total_portfolio_value": 1240000,
+      "monthly_contribution": 20000,
+      "risk_tolerance": "Moderate"
+    },
+    "irregular_income": {
+      "average_monthly_income": 85000,
+      "min_monthly_income": 30000,
+      "max_monthly_income": 160000,
+      "essential_expenses": 42000,
+      "buffer_target_months": 6,
+      "current_buffer": 180000
+    }
+  },
+  "user_admin_001": {
+    "advisor": {
+      "monthly_income": 120000,
+      "monthly_expenses": 52000,
+      "total_emis": 22000,
+      "total_assets": 1800000,
+      "total_liabilities": 650000,
+      "current_investments": 750000,
+      "emergency_fund": 300000,
+      "age": 32,
+      "dependents": 0,
+      "monthly_sip": 15000,
+      "updatedAt": "2026-08-20T16:27:03.720Z"
+    },
+    "tax": {
+      "age": 30,
+      "residential_status": "Resident",
+      "regime_choice": "Auto",
+      "salary_income": "900000",
+      "business_income": 0,
+      "rental_income": 0,
+      "interest_income": 0,
+      "stcg": 0,
+      "ltcg": 0,
+      "stcg_debt": 0,
+      "c80c": 150000,
+      "c80d": 25000,
+      "nps": 50000,
+      "hra": 120000,
+      "home_loan": 0,
+      "edu_loan": 0,
+      "tax_saving_budget": 150000,
+      "risk_profile": "Moderate",
+      "salary_growth_rate": 10,
+      "business_growth_rate": 15,
+      "inflation_rate": 6,
+      "updatedAt": "2026-08-20T16:29:49.779Z"
+    },
+    "simulator": {
+      "goals": [
+        {
+          "name": "Early FIRE Retirement",
+          "target_amount_today": 40000000,
+          "years_to_goal": 15,
+          "inflation_rate": 0.06
+        },
+        {
+          "name": "Child Global College",
+          "target_amount_today": 8000000,
+          "years_to_goal": 10,
+          "inflation_rate": 0.08
+        }
+      ],
+      "finData": {
+        "current_corpus": 1500000,
+        "monthly_sip": 50000,
+        "user_iss": 0.8,
+        "user_fragility": 0.3,
+        "expected_return": 0.12,
+        "risk_profile": "Moderate",
+        "savings_rate": 0.2,
+        "emergency_coverage": 4.5,
+        "age": 32
+      },
+      "updatedAt": "2026-08-20T16:34:05.547Z"
+    },
+    "irregular_income": {
+      "income_history": [
+        75000,
+        120000,
+        45000,
+        95000,
+        140000,
+        60000,
+        110000,
+        85000,
+        130000,
+        50000,
+        105000,
+        90000
+      ],
+      "income_category": "freelance",
+      "fixed_monthly_expenses": 40000,
+      "emi_commitments": 15000,
+      "current_emergency_fund": 150000,
+      "seasonal_months": null,
+      "historyInput": "75000, 120000, 45000, 95000, 140000, 60000, 110000, 85000, 130000, 50000, 105000, 90000",
+      "updatedAt": "2026-08-20T16:36:39.326Z"
+    },
+    "portfolio": {
+      "assetInputs": {
+        "stocks": {
+          "current_value": 300000,
+          "expected_return": 14,
+          "risk_level": "high"
+        },
+        "mutual_funds": {
+          "current_value": 250000,
+          "expected_return": 12,
+          "risk_level": "medium"
+        },
+        "fixed_deposits": {
+          "current_value": 150000,
+          "expected_return": 7,
+          "risk_level": "low"
+        },
+        "gold": {
+          "current_value": 100000,
+          "expected_return": 9,
+          "risk_level": "low"
+        },
+        "pf": {
+          "current_value": 120000,
+          "expected_return": 8.15,
+          "risk_level": "low"
+        },
+        "bonds": {
+          "current_value": 50000,
+          "expected_return": 7.5,
+          "risk_level": "low"
+        },
+        "cash": {
+          "current_value": 30000,
+          "expected_return": 3.5,
+          "risk_level": "low"
+        }
+      },
+      "userAge": 32,
+      "riskProfile": "Moderate",
+      "monthlySip": 15000,
+      "projectionYears": 10,
+      "incomeStability": 0.7,
+      "goalProximityYears": 10,
+      "targetWealth": "",
+      "updatedAt": "2026-08-20T16:38:08.560Z"
+    }
+  }
+}

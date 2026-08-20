@@ -96,21 +96,80 @@ function LoadingScreen({ stepIdx }) {
   );
 }
 
+import { useAuth } from './context/AuthContext';
+import { Link } from 'react-router-dom';
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function PortfolioDashboard() {
+  const { user, getEngineData, saveEngineData } = useAuth();
+
   // Form state
   const [step, setStep] = useState(0);
   const [animating, setAnimating] = useState(false);
-  const [assetInputs, setAssetInputs] = useState(DEFAULT_ASSETS);
+
+  const [assetInputs, setAssetInputs] = useState(() => {
+    const stored = getEngineData ? getEngineData('portfolio') : null;
+    return stored?.assetInputs ? stored.assetInputs : DEFAULT_ASSETS;
+  });
 
   // Step 2 settings
-  const [userAge, setUserAge] = useState(32);
-  const [riskProfile, setRiskProfile] = useState('Moderate');
-  const [monthlySip, setMonthlySip] = useState(15000);
-  const [projectionYears, setProjectionYears] = useState(10);
-  const [incomeStability, setIncomeStability] = useState(0.7);
-  const [goalProximityYears, setGoalProximityYears] = useState(10);
-  const [targetWealth, setTargetWealth] = useState('');
+  const [userAge, setUserAge] = useState(() => {
+    const stored = getEngineData ? getEngineData('portfolio') : null;
+    return stored?.userAge ?? 32;
+  });
+  const [riskProfile, setRiskProfile] = useState(() => {
+    const stored = getEngineData ? getEngineData('portfolio') : null;
+    return stored?.riskProfile ?? 'Moderate';
+  });
+  const [monthlySip, setMonthlySip] = useState(() => {
+    const stored = getEngineData ? getEngineData('portfolio') : null;
+    return stored?.monthlySip ?? 15000;
+  });
+  const [projectionYears, setProjectionYears] = useState(() => {
+    const stored = getEngineData ? getEngineData('portfolio') : null;
+    return stored?.projectionYears ?? 10;
+  });
+  const [incomeStability, setIncomeStability] = useState(() => {
+    const stored = getEngineData ? getEngineData('portfolio') : null;
+    return stored?.incomeStability ?? 0.7;
+  });
+  const [goalProximityYears, setGoalProximityYears] = useState(() => {
+    const stored = getEngineData ? getEngineData('portfolio') : null;
+    return stored?.goalProximityYears ?? 10;
+  });
+  const [targetWealth, setTargetWealth] = useState(() => {
+    const stored = getEngineData ? getEngineData('portfolio') : null;
+    return stored?.targetWealth ?? '';
+  });
+
+  const [isAutofilled, setIsAutofilled] = useState(() => {
+    return Boolean(getEngineData && getEngineData('portfolio'));
+  });
+
+  useEffect(() => {
+    if (getEngineData) {
+      const stored = getEngineData('portfolio');
+      if (stored) {
+        if (stored.assetInputs) setAssetInputs(stored.assetInputs);
+        if (stored.userAge !== undefined) setUserAge(stored.userAge);
+        if (stored.riskProfile) setRiskProfile(stored.riskProfile);
+        if (stored.monthlySip !== undefined) setMonthlySip(stored.monthlySip);
+        if (stored.projectionYears !== undefined) setProjectionYears(stored.projectionYears);
+        if (stored.incomeStability !== undefined) setIncomeStability(stored.incomeStability);
+        if (stored.goalProximityYears !== undefined) setGoalProximityYears(stored.goalProximityYears);
+        if (stored.targetWealth !== undefined) setTargetWealth(stored.targetWealth);
+        setIsAutofilled(true);
+      }
+    }
+  }, [getEngineData]);
+
+  const applyPortfolioPreset = (presetAssets, presetSettings = {}) => {
+    setAssetInputs(presetAssets);
+    if (presetSettings.userAge !== undefined) setUserAge(presetSettings.userAge);
+    if (presetSettings.riskProfile) setRiskProfile(presetSettings.riskProfile);
+    if (presetSettings.monthlySip !== undefined) setMonthlySip(presetSettings.monthlySip);
+    setIsAutofilled(false);
+  };
 
   // Result & loading state
   const [result, setResult] = useState(null);
@@ -178,19 +237,35 @@ export default function PortfolioDashboard() {
     }
 
     try {
+      const payload = {
+        ...assetInputs,
+        age: Number(userAge),
+        risk_profile: riskProfile,
+        monthly_sip: Number(monthlySip),
+        projection_years: Number(projectionYears),
+        income_stability: Number(incomeStability),
+        goal_proximity_years: Number(goalProximityYears),
+        target_wealth: targetWealth ? Number(targetWealth) : null,
+      };
+
+      // Save to profile
+      if (saveEngineData) {
+        saveEngineData('portfolio', {
+          assetInputs,
+          userAge: Number(userAge),
+          riskProfile,
+          monthlySip: Number(monthlySip),
+          projectionYears: Number(projectionYears),
+          incomeStability: Number(incomeStability),
+          goalProximityYears: Number(goalProximityYears),
+          targetWealth
+        });
+      }
+
       const res = await fetch('http://localhost:8000/api/portfolio/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...assetInputs,
-          age: Number(userAge),
-          risk_profile: riskProfile,
-          monthly_sip: Number(monthlySip),
-          projection_years: Number(projectionYears),
-          income_stability: Number(incomeStability),
-          goal_proximity_years: Number(goalProximityYears),
-          target_wealth: targetWealth ? Number(targetWealth) : null,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`API error ${res.status}`);
       const data = await res.json();
@@ -572,18 +647,87 @@ export default function PortfolioDashboard() {
   }
 
   // ─── FORM: STEP 1 — Asset Inputs ─────────────────────────────────────────
+  // ─── FORM: STEP 1 — Asset Inputs ─────────────────────────────────────────
   if (step === 0) {
     return (
       <div className="pf-page">
         <header className="pf-header">
-          <div className="pf-logo">
-            <div className="pf-logo-icon">P</div>
+          <Link to="/" className="pf-logo" style={{ textDecoration: 'none', color: '#fff' }}>
+            <div className="pf-logo-icon">📈</div>
             FINEXO · <span>Portfolio Growth & Rebalancing</span>
+          </Link>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            {user && (
+              <div style={{ background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#818cf8', fontSize: '0.8rem', fontWeight: 600, padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+                <span>👤 {user.name}</span>
+              </div>
+            )}
+            <Link to="/" className="pf-reset-btn">← Back to Hub</Link>
           </div>
-          <a href="/" className="pf-reset-btn">← Back to Home</a>
         </header>
 
         <div className="pf-form-wrapper">
+          {/* Autofill Notification */}
+          {isAutofilled && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '0.82rem', fontWeight: 600, padding: '0.6rem 1.2rem', borderRadius: '100px', marginBottom: '0.8rem', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)' }}>
+              <span>✨ Portfolio holdings pre-filled from your saved model. Adjust allocations as needed.</span>
+            </div>
+          )}
+
+          {/* 1-Click Allocation Presets */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem', width: '100%', maxWidth: '680px' }}>
+            <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              ⚡ 1-Click Asset Allocation Presets:
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.6rem' }}>
+              <button
+                type="button"
+                style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                onClick={() => applyPortfolioPreset({
+                  stocks: { current_value: 100000, expected_return: 14.0, risk_level: 'high' },
+                  mutual_funds: { current_value: 150000, expected_return: 11.5, risk_level: 'medium' },
+                  fixed_deposits: { current_value: 400000, expected_return: 7.2, risk_level: 'low' },
+                  gold: { current_value: 150000, expected_return: 8.5, risk_level: 'low' },
+                  pf: { current_value: 300000, expected_return: 8.15, risk_level: 'low' },
+                  bonds: { current_value: 100000, expected_return: 7.5, risk_level: 'low' },
+                  cash: { current_value: 50000, expected_return: 3.5, risk_level: 'low' }
+                }, { riskProfile: 'Conservative', monthlySip: 10000 })}
+              >
+                🛡️ Low-Risk Capital Preserver (₹12.5L)
+              </button>
+              <button
+                type="button"
+                style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                onClick={() => applyPortfolioPreset({
+                  stocks: { current_value: 500000, expected_return: 14.5, risk_level: 'high' },
+                  mutual_funds: { current_value: 400000, expected_return: 12.0, risk_level: 'medium' },
+                  fixed_deposits: { current_value: 200000, expected_return: 7.0, risk_level: 'low' },
+                  gold: { current_value: 150000, expected_return: 9.0, risk_level: 'low' },
+                  pf: { current_value: 250000, expected_return: 8.15, risk_level: 'low' },
+                  bonds: { current_value: 100000, expected_return: 7.5, risk_level: 'low' },
+                  cash: { current_value: 50000, expected_return: 3.5, risk_level: 'low' }
+                }, { riskProfile: 'Moderate', monthlySip: 25000 })}
+              >
+                ⚖️ Balanced 60/40 Growth (₹16.5L)
+              </button>
+              <button
+                type="button"
+                style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                onClick={() => applyPortfolioPreset({
+                  stocks: { current_value: 1200000, expected_return: 16.0, risk_level: 'high' },
+                  mutual_funds: { current_value: 800000, expected_return: 13.5, risk_level: 'high' },
+                  fixed_deposits: { current_value: 100000, expected_return: 7.0, risk_level: 'low' },
+                  gold: { current_value: 100000, expected_return: 9.0, risk_level: 'low' },
+                  pf: { current_value: 200000, expected_return: 8.15, risk_level: 'low' },
+                  bonds: { current_value: 50000, expected_return: 7.5, risk_level: 'low' },
+                  cash: { current_value: 50000, expected_return: 3.5, risk_level: 'low' }
+                }, { riskProfile: 'Aggressive', monthlySip: 50000 })}
+              >
+                🚀 Aggressive Alpha Max (₹25L)
+              </button>
+            </div>
+          </div>
+
           <ProgressStepper step={0} />
 
           <div className={`pf-form-card ${animating ? 'pf-fade-out' : 'pf-fade-in'}`}>
@@ -593,59 +737,122 @@ export default function PortfolioDashboard() {
               Step 1 of 2 · Enter the current value, expected annual return, and risk level for each asset class
             </p>
 
-            <div className="pf-total-bar">
-              <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Running Total</span>
-              <span style={{ fontWeight: 800, color: '#60a5fa', fontSize: '1.1rem' }}>{inr(totalValue)}</span>
+            <div className="pf-total-bar" style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#9ca3af', fontSize: '0.85rem' }}>Portfolio Running Total</span>
+                <span style={{ fontWeight: 800, color: '#60a5fa', fontSize: '1.25rem', fontFamily: 'Outfit, sans-serif' }}>{inr(totalValue)}</span>
+              </div>
+
+              {/* Live Segmented Asset Weight Distribution Bar */}
+              {totalValue > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div style={{ display: 'flex', height: '8px', borderRadius: '100px', overflow: 'hidden', background: 'rgba(255,255,255,0.06)' }}>
+                    {ASSET_KEYS.map((key, i) => {
+                      const val = parseFloat(assetInputs[key]?.current_value) || 0;
+                      const pct = ((val / totalValue) * 100).toFixed(1);
+                      const colors = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
+                      if (val <= 0) return null;
+                      return (
+                        <div
+                          key={key}
+                          style={{ width: `${pct}%`, background: colors[i % colors.length] }}
+                          title={`${ASSET_LABELS[key]}: ${pct}%`}
+                        />
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', fontSize: '0.7rem', color: '#94a3b8', marginTop: '2px' }}>
+                    {ASSET_KEYS.map((key, i) => {
+                      const val = parseFloat(assetInputs[key]?.current_value) || 0;
+                      if (val <= 0) return null;
+                      const pct = Math.round((val / totalValue) * 100);
+                      const colors = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
+                      return (
+                        <span key={key} style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', background: colors[i % colors.length] }} />
+                          {key.replace('_', ' ')}: <strong>{pct}%</strong>
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="pf-asset-list">
-              {ASSET_KEYS.map(key => (
-                <div key={key} className="pf-asset-row">
-                  <div className="pf-asset-icon-label">
-                    <span className="pf-asset-icon">{ASSET_ICONS[key]}</span>
-                    <span className="pf-asset-label">{ASSET_LABELS[key]}</span>
-                  </div>
-                  <div className="pf-asset-fields">
-                    <div className="pf-field-group">
-                      <label>Current Value</label>
-                      <div className="pf-field-wrap">
-                        <span className="pf-field-unit">₹</span>
+              {ASSET_KEYS.map(key => {
+                const val = parseFloat(assetInputs[key].current_value) || 0;
+                return (
+                  <div key={key} className="pf-asset-row">
+                    <div className="pf-asset-icon-label">
+                      <span className="pf-asset-icon">{ASSET_ICONS[key]}</span>
+                      <div>
+                        <div className="pf-asset-label">{ASSET_LABELS[key]}</div>
+                        {totalValue > 0 && (
+                          <div style={{ fontSize: '0.72rem', color: '#818cf8', fontWeight: 600 }}>
+                            {Math.round((val / totalValue) * 100)}% of portfolio
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="pf-asset-fields" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 100px', gap: '0.8rem', alignItems: 'center' }}>
+                        <div className="pf-field-group">
+                          <label>Current Value</label>
+                          <div className="pf-field-wrap">
+                            <span className="pf-field-unit">₹</span>
+                            <input
+                              type="number"
+                              value={assetInputs[key].current_value}
+                              onChange={e => handleAssetChange(key, 'current_value', e.target.value)}
+                              min="0"
+                            />
+                          </div>
+                        </div>
+                        <div className="pf-field-group">
+                          <label>Exp. Return</label>
+                          <div className="pf-field-wrap">
+                            <span className="pf-field-unit">%</span>
+                            <input
+                              type="number"
+                              value={assetInputs[key].expected_return}
+                              onChange={e => handleAssetChange(key, 'expected_return', e.target.value)}
+                              step="0.1"
+                              min="0"
+                            />
+                          </div>
+                        </div>
+                        <div className="pf-field-group">
+                          <label>Risk Level</label>
+                          <select
+                            value={assetInputs[key].risk_level}
+                            onChange={e => handleAssetChange(key, 'risk_level', e.target.value)}
+                            className="pf-select"
+                          >
+                            <option value="low">🟢 Low</option>
+                            <option value="medium">🟡 Med</option>
+                            <option value="high">🔴 High</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Range Slider for Asset Value */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <input
-                          type="number"
-                          value={assetInputs[key].current_value}
+                          type="range"
+                          min="0"
+                          max="5000000"
+                          step="10000"
+                          value={val}
                           onChange={e => handleAssetChange(key, 'current_value', e.target.value)}
-                          min="0"
+                          className="adv-range-slider"
+                          style={{ accentColor: '#06b6d4' }}
                         />
                       </div>
-                    </div>
-                    <div className="pf-field-group">
-                      <label>Expected Return</label>
-                      <div className="pf-field-wrap">
-                        <span className="pf-field-unit">%</span>
-                        <input
-                          type="number"
-                          value={assetInputs[key].expected_return}
-                          onChange={e => handleAssetChange(key, 'expected_return', e.target.value)}
-                          step="0.1"
-                          min="0"
-                        />
-                      </div>
-                    </div>
-                    <div className="pf-field-group">
-                      <label>Risk Level</label>
-                      <select
-                        value={assetInputs[key].risk_level}
-                        onChange={e => handleAssetChange(key, 'risk_level', e.target.value)}
-                        className="pf-select"
-                      >
-                        <option value="low">🟢 Low</option>
-                        <option value="medium">🟡 Medium</option>
-                        <option value="high">🔴 High</option>
-                      </select>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="pf-form-actions">
@@ -667,11 +874,18 @@ export default function PortfolioDashboard() {
   return (
     <div className="pf-page">
       <header className="pf-header">
-        <div className="pf-logo">
-          <div className="pf-logo-icon">P</div>
+        <Link to="/" className="pf-logo" style={{ textDecoration: 'none', color: '#fff' }}>
+          <div className="pf-logo-icon">⚙️</div>
           FINEXO · <span>Portfolio Growth & Rebalancing</span>
+        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          {user && (
+            <div style={{ background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#818cf8', fontSize: '0.8rem', fontWeight: 600, padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+              <span>👤 {user.name}</span>
+            </div>
+          )}
+          <Link to="/" className="pf-reset-btn">← Back to Hub</Link>
         </div>
-        <a href="/" className="pf-reset-btn">← Back to Home</a>
       </header>
 
       <div className="pf-form-wrapper">

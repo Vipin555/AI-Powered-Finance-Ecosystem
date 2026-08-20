@@ -1,0 +1,20 @@
+[
+  {
+    "id": "user_admin_001",
+    "name": "Super Admin",
+    "email": "admin@finexo.ai",
+    "passwordHash": "bd3af5aa91d64db4371bfe032b989e647c6b785c0a05d742362a8b3176877602",
+    "role": "admin",
+    "createdAt": "2026-01-15T10:00:00.000Z",
+    "lastLogin": "2026-08-20T16:17:34.189Z"
+  },
+  {
+    "id": "user_demo_002",
+    "name": "Alex Sharma",
+    "email": "demo@finexo.ai",
+    "passwordHash": "2bf28071bdde29e0169dd96bb9570a5daceee490619b2187f41e23b35f5357a0",
+    "role": "user",
+    "createdAt": "2026-02-10T14:30:00.000Z",
+    "lastLogin": "2026-08-20T16:11:43.234Z"
+  }
+]

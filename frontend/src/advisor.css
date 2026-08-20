@@ -68,6 +68,22 @@ html, body { height: 100%; }
   font-weight: 800; font-size: 1rem; color: var(--bg-deep);
 }
 
+.adv-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.adv-user-badge {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #818cf8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+}
+
 .adv-reset-btn {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -104,8 +120,71 @@ html, body { height: 100%; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 3rem 1.5rem;
-  gap: 2.5rem;
+  padding: 2.5rem 1.5rem;
+  gap: 1.8rem;
+}
+
+.adv-autofill-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.6rem 1.2rem;
+  border-radius: 100px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.autofill-icon {
+  font-size: 1rem;
+}
+
+.adv-presets-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 600px;
+}
+
+.presets-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #f59e0b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.presets-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.adv-preset-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0.5rem 0.9rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.adv-preset-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-2px);
+  color: #fff;
 }
 
 /* Progress bar */
@@ -168,14 +247,212 @@ html, body { height: 100%; }
 .progress-line.filled { background: var(--text); }
 
 /* Form Card */
+/* Cockpit Layout */
+.adv-cockpit-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.8rem;
+  width: 100%;
+  max-width: 960px;
+  align-items: start;
+}
+
 .form-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 3rem;
+  padding: 2.2rem 2.5rem;
   width: 100%;
-  max-width: 540px;
   transition: opacity 0.2s, transform 0.2s;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+}
+
+.form-field-cockpit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  margin-bottom: 1.1rem;
+}
+
+.field-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.field-live-badge {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #818cf8;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 2px 10px;
+  border-radius: 100px;
+}
+
+.field-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+/* .adv-range-slider is now defined globally in index.css */
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.field-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.chip-label {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.adv-chip-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.adv-chip-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #fff;
+}
+
+.adv-chip-btn.reset-chip {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+/* Live Micro Preview Widget */
+.adv-live-preview-box {
+  background: #0d111a;
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: var(--radius);
+  padding: 1.4rem 1.4rem;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5), 0 0 30px rgba(99, 102, 241, 0.12);
+  position: sticky;
+  top: 90px;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.75rem;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+}
+
+.preview-header h3 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.preview-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.preview-card-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 0.8rem;
+}
+
+.preview-row-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.preview-row-label strong {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+}
+
+.preview-bar-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.preview-bar-fill {
+  height: 100%;
+  border-radius: 100px;
+  transition: width 0.4s ease;
+}
+
+.preview-bar-fill.green { background: #10b981; }
+.preview-bar-fill.yellow { background: #f59e0b; }
+.preview-bar-fill.red { background: #ef4444; }
+
+.preview-row-sub {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+.preview-tip-pill {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .adv-cockpit-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .form-card.fade-out { opacity: 0; transform: translateY(10px); }
 .form-card.fade-in  { opacity: 1; transform: translateY(0); }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './irregular.css';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -98,24 +98,84 @@ function ResultSection({ icon, title, children }) {
   );
 }
 
+import { useAuth } from './context/AuthContext';
+import { Link } from 'react-router-dom';
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function IrregularIncomeDashboard() {
+  const { user, getEngineData, saveEngineData } = useAuth();
   const [step, setStep]         = useState(1);   // 1=income, 2=profile, 3=seasonal
   const [submitted, setSubmitted] = useState(false);
 
+  const defaultHistory = '65000, 85000, 42000, 110000, 58000, 95000, 38000, 125000, 70000, 90000, 48000, 115000';
+  const defaultVals = [65000, 85000, 42000, 110000, 58000, 95000, 38000, 125000, 70000, 90000, 48000, 115000];
+
   // Step 1 — Income history
-  const [historyInput, setHistoryInput]   = useState('');
-  const [historyVals,  setHistoryVals]    = useState([]);
-  const [historyError, setHistoryError]   = useState('');
+  const [historyInput, setHistoryInput] = useState(() => {
+    const stored = getEngineData ? getEngineData('irregular_income') : null;
+    return stored?.historyInput ?? defaultHistory;
+  });
+  const [historyVals,  setHistoryVals]  = useState(() => {
+    const stored = getEngineData ? getEngineData('irregular_income') : null;
+    if (stored?.income_history && stored.income_history.length >= 3) return stored.income_history;
+    return defaultVals;
+  });
+  const [historyError, setHistoryError] = useState('');
 
   // Step 2 — Profile
-  const [incomeCategory, setIncomeCategory] = useState('freelance');
-  const [fixedExpenses,  setFixedExpenses]  = useState('');
-  const [emiCommitments, setEmiCommitments] = useState('');
-  const [emergencyFund,  setEmergencyFund]  = useState('');
+  const [incomeCategory, setIncomeCategory] = useState(() => {
+    const stored = getEngineData ? getEngineData('irregular_income') : null;
+    return stored?.income_category ?? 'freelance';
+  });
+  const [fixedExpenses,  setFixedExpenses]  = useState(() => {
+    const stored = getEngineData ? getEngineData('irregular_income') : null;
+    return stored?.fixed_monthly_expenses ?? '35000';
+  });
+  const [emiCommitments, setEmiCommitments] = useState(() => {
+    const stored = getEngineData ? getEngineData('irregular_income') : null;
+    return stored?.emi_commitments ?? '12000';
+  });
+  const [emergencyFund,  setEmergencyFund]  = useState(() => {
+    const stored = getEngineData ? getEngineData('irregular_income') : null;
+    return stored?.current_emergency_fund ?? '120000';
+  });
 
   // Step 3 — Seasonal (optional)
-  const [seasonalMonths, setSeasonalMonths] = useState([]);
+  const [seasonalMonths, setSeasonalMonths] = useState(() => {
+    const stored = getEngineData ? getEngineData('irregular_income') : null;
+    return stored?.seasonal_months ?? [];
+  });
+
+  const [isAutofilled, setIsAutofilled] = useState(() => {
+    return Boolean(getEngineData && getEngineData('irregular_income'));
+  });
+
+  useEffect(() => {
+    if (getEngineData) {
+      const stored = getEngineData('irregular_income');
+      if (stored) {
+        if (stored.historyInput) setHistoryInput(stored.historyInput);
+        if (stored.income_history) setHistoryVals(stored.income_history);
+        if (stored.income_category) setIncomeCategory(stored.income_category);
+        if (stored.fixed_monthly_expenses !== undefined) setFixedExpenses(String(stored.fixed_monthly_expenses));
+        if (stored.emi_commitments !== undefined) setEmiCommitments(String(stored.emi_commitments));
+        if (stored.current_emergency_fund !== undefined) setEmergencyFund(String(stored.current_emergency_fund));
+        if (stored.seasonal_months) setSeasonalMonths(stored.seasonal_months);
+        setIsAutofilled(true);
+      }
+    }
+  }, [getEngineData]);
+
+  const applyIrregularPreset = (preset) => {
+    setHistoryInput(preset.historyInput);
+    setHistoryVals(preset.vals);
+    setHistoryError('');
+    if (preset.category) setIncomeCategory(preset.category);
+    if (preset.fixed) setFixedExpenses(String(preset.fixed));
+    if (preset.emis !== undefined) setEmiCommitments(String(preset.emis));
+    if (preset.fund !== undefined) setEmergencyFund(String(preset.fund));
+    setIsAutofilled(false);
+  };
 
   // Result / loading
   const [result,  setResult]  = useState(null);
@@ -147,17 +207,27 @@ export default function IrregularIncomeDashboard() {
     setResult(null);
     setSubmitted(true);
     try {
+      const payload = {
+        income_history:          historyVals,
+        income_category:         incomeCategory,
+        fixed_monthly_expenses:  Number(fixedExpenses) || 0,
+        emi_commitments:         Number(emiCommitments) || 0,
+        current_emergency_fund:  Number(emergencyFund) || 0,
+        seasonal_months:         seasonalMonths.length ? seasonalMonths : null,
+      };
+
+      // Save to profile
+      if (saveEngineData) {
+        saveEngineData('irregular_income', {
+          ...payload,
+          historyInput
+        });
+      }
+
       const res = await fetch('http://localhost:8000/api/irregular-income/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          income_history:          historyVals,
-          income_category:         incomeCategory,
-          fixed_monthly_expenses:  Number(fixedExpenses) || 0,
-          emi_commitments:         Number(emiCommitments) || 0,
-          current_emergency_fund:  Number(emergencyFund) || 0,
-          seasonal_months:         seasonalMonths.length ? seasonalMonths : null,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(await res.text());
       setResult(await res.json());
@@ -173,14 +243,6 @@ export default function IrregularIncomeDashboard() {
     setSubmitted(false);
     setResult(null);
     setError('');
-    setHistoryInput('');
-    setHistoryVals([]);
-    setHistoryError('');
-    setFixedExpenses('');
-    setEmiCommitments('');
-    setEmergencyFund('');
-    setSeasonalMonths([]);
-    setIncomeCategory('freelance');
   };
 
   // ── derived ─────────────────────────────────────────────────────────────
@@ -197,23 +259,93 @@ export default function IrregularIncomeDashboard() {
   // ══════════════════════════════════════════════════════════════════════════
   //  RENDER
   // ══════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
+  //  RENDER
+  // ══════════════════════════════════════════════════════════════════════════
   return (
     <div className="irr2-root">
       {/* ── Header ── */}
       <div className="irr2-header">
-        <button className="irr2-back-btn" onClick={() => window.location.href = '/'}>← Back</button>
+        <Link to="/" className="irr2-back-btn" style={{ textDecoration: 'none' }}>← Back to Hub</Link>
         <div className="irr2-header-center">
-          <h1>Irregular Income Planner</h1>
-          <p>Smart saving &amp; investing advice tailored for variable earners</p>
+          <h1>🌊 Irregular Income Planner</h1>
+          <p>Smart buffering, floor income stabilization &amp; volatile cash flow planner</p>
         </div>
-        {result && (
-          <button className="irr2-reset-btn" onClick={handleReset}>🔄 Start Over</button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          {user && (
+            <div style={{ background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#818cf8', fontSize: '0.8rem', fontWeight: 600, padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+              <span>👤 {user.name}</span>
+            </div>
+          )}
+          {result && (
+            <button className="irr2-reset-btn" onClick={handleReset}>🔄 Start Over</button>
+          )}
+        </div>
       </div>
 
       {/* ═══════════════════ INPUT FORM ═══════════════════ */}
       {!submitted && (
         <div className="irr2-form-wrapper">
+
+          {/* Autofill Notification */}
+          {isAutofilled && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '0.82rem', fontWeight: 600, padding: '0.6rem 1.2rem', borderRadius: '100px', marginBottom: '1.2rem', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)' }}>
+              <span>✨ Income history & expenses restored from your saved model. Edit any value.</span>
+            </div>
+          )}
+
+          {/* 1-Click Fast Presets on Step 1 */}
+          {step === 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', marginBottom: '1.2rem', width: '100%' }}>
+              <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                ⚡ 1-Click Income Flow Presets:
+              </span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.6rem' }}>
+                <button
+                  type="button"
+                  style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                  onClick={() => applyIrregularPreset({
+                    historyInput: '75000, 120000, 45000, 95000, 140000, 60000, 110000, 85000, 130000, 50000, 105000, 90000',
+                    vals: [75000, 120000, 45000, 95000, 140000, 60000, 110000, 85000, 130000, 50000, 105000, 90000],
+                    category: 'freelance',
+                    fixed: 40000,
+                    emis: 15000,
+                    fund: 150000
+                  })}
+                >
+                  💻 Tech Freelancer (₹45k–₹1.4L)
+                </button>
+                <button
+                  type="button"
+                  style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                  onClick={() => applyIrregularPreset({
+                    historyInput: '55000, 60000, 48000, 72000, 50000, 65000, 58000, 80000, 52000, 68000, 60000, 75000',
+                    vals: [55000, 60000, 48000, 72000, 50000, 65000, 58000, 80000, 52000, 68000, 60000, 75000],
+                    category: 'gig',
+                    fixed: 30000,
+                    emis: 8000,
+                    fund: 80000
+                  })}
+                >
+                  🛵 Gig Worker / Driver (₹48k–₹80k)
+                </button>
+                <button
+                  type="button"
+                  style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                  onClick={() => applyIrregularPreset({
+                    historyInput: '35000, 40000, 30000, 220000, 280000, 310000, 45000, 50000, 240000, 290000, 40000, 35000',
+                    vals: [35000, 40000, 30000, 220000, 280000, 310000, 45000, 50000, 240000, 290000, 40000, 35000],
+                    category: 'seasonal',
+                    fixed: 50000,
+                    emis: 20000,
+                    fund: 300000
+                  })}
+                >
+                  🛍️ Seasonal Merchant (₹30k–₹3.1L Festival Surge)
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Step Progress */}
           <div className="irr2-steps-bar">
@@ -310,10 +442,14 @@ export default function IrregularIncomeDashboard() {
 
                 <div className="irr2-two-col">
                   <div className="irr2-field">
-                    <label className="irr2-label">
-                      Fixed Monthly Expenses (₹)
-                      <span className="irr2-hint">Rent, groceries, utilities, subscriptions</span>
-                    </label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label className="irr2-label">
+                        Fixed Monthly Expenses (₹)
+                      </label>
+                      <span style={{ fontSize: '0.78rem', color: '#818cf8', fontWeight: 700 }}>
+                        ₹{fmt(fixedExpenses || 0)}/mo
+                      </span>
+                    </div>
                     <input
                       className="irr2-input"
                       type="number"
@@ -322,12 +458,26 @@ export default function IrregularIncomeDashboard() {
                       onChange={e => setFixedExpenses(e.target.value)}
                       placeholder="e.g. 25000"
                     />
+                    <input
+                      type="range"
+                      min="5000"
+                      max="200000"
+                      step="2000"
+                      value={Number(fixedExpenses) || 0}
+                      onChange={e => setFixedExpenses(e.target.value)}
+                      className="adv-range-slider"
+                      style={{ accentColor: '#6366f1', marginTop: '6px' }}
+                    />
                   </div>
                   <div className="irr2-field">
-                    <label className="irr2-label">
-                      Monthly Loan Payments / EMIs (₹)
-                      <span className="irr2-hint">Home loan, car loan, personal loan</span>
-                    </label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label className="irr2-label">
+                        Monthly Loan Payments / EMIs (₹)
+                      </label>
+                      <span style={{ fontSize: '0.78rem', color: '#f59e0b', fontWeight: 700 }}>
+                        ₹{fmt(emiCommitments || 0)}/mo
+                      </span>
+                    </div>
                     <input
                       className="irr2-input"
                       type="number"
@@ -336,14 +486,28 @@ export default function IrregularIncomeDashboard() {
                       onChange={e => setEmiCommitments(e.target.value)}
                       placeholder="e.g. 5000  (enter 0 if none)"
                     />
+                    <input
+                      type="range"
+                      min="0"
+                      max="150000"
+                      step="1000"
+                      value={Number(emiCommitments) || 0}
+                      onChange={e => setEmiCommitments(e.target.value)}
+                      className="adv-range-slider"
+                      style={{ accentColor: '#f59e0b', marginTop: '6px' }}
+                    />
                   </div>
                 </div>
 
-                <div className="irr2-field">
-                  <label className="irr2-label">
-                    Emergency Savings you already have (₹)
-                    <span className="irr2-hint">Money kept aside for emergencies — in FD, savings a/c etc.</span>
-                  </label>
+                <div className="irr2-field" style={{ marginTop: '0.8rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="irr2-label">
+                      Emergency Savings Balance (₹)
+                    </label>
+                    <span style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: 700 }}>
+                      ₹{fmt(emergencyFund || 0)}
+                    </span>
+                  </div>
                   <input
                     className="irr2-input"
                     type="number"
@@ -352,9 +516,19 @@ export default function IrregularIncomeDashboard() {
                     onChange={e => setEmergencyFund(e.target.value)}
                     placeholder="e.g. 50000  (enter 0 if none)"
                   />
+                  <input
+                    type="range"
+                    min="0"
+                    max="1500000"
+                    step="10000"
+                    value={Number(emergencyFund) || 0}
+                    onChange={e => setEmergencyFund(e.target.value)}
+                    className="adv-range-slider"
+                    style={{ accentColor: '#34d399', marginTop: '6px' }}
+                  />
                 </div>
 
-                {fixedExpenses && emiCommitments && (
+                {fixedExpenses && (
                   <div className="irr2-expense-summary">
                     <div className="irr2-expense-row">
                       <span>Fixed Expenses</span>
@@ -362,11 +536,19 @@ export default function IrregularIncomeDashboard() {
                     </div>
                     <div className="irr2-expense-row">
                       <span>Loan Payments</span>
-                      <strong>₹{fmt(emiCommitments)}</strong>
+                      <strong>₹{fmt(emiCommitments || 0)}</strong>
                     </div>
                     <div className="irr2-expense-row total">
                       <span>Total Monthly Commitments</span>
                       <strong style={{ color: '#f87171' }}>₹{fmt(totalFixed)}</strong>
+                    </div>
+
+                    {/* Live Emergency Buffer Coverage Meter */}
+                    <div style={{ marginTop: '0.8rem', background: 'rgba(52, 211, 153, 0.08)', border: '1px solid rgba(52, 211, 153, 0.25)', borderRadius: '10px', padding: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Emergency Buffer Runway:</span>
+                      <strong style={{ fontSize: '0.98rem', color: '#34d399', fontFamily: 'Outfit, sans-serif' }}>
+                        {totalFixed > 0 ? ((Number(emergencyFund) || 0) / totalFixed).toFixed(1) : 0} Months of Expenses Covered
+                      </strong>
                     </div>
                   </div>
                 )}

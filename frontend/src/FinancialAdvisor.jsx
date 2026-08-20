@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './advisor.css';
 
 // ─── Form steps config ───────────────────────────────────────────────────────
@@ -7,32 +7,32 @@ const STEPS = [
     title: 'Personal Info',
     icon: '👤',
     fields: [
-      { key: 'age', label: 'Your Age', type: 'number', placeholder: '28', unit: 'yrs', hint: 'Used to determine your investment horizon' },
-      { key: 'monthly_income', label: 'Monthly Income (Net Take-Home)', type: 'number', placeholder: '75000', unit: '₹', hint: 'After tax income credited to your account' },
+      { key: 'age', label: 'Your Age', type: 'number', placeholder: '28', unit: 'yrs', hint: 'Used to determine your investment horizon', min: 18, max: 75, step: 1 },
+      { key: 'monthly_income', label: 'Monthly Income (Net Take-Home)', type: 'number', placeholder: '75000', unit: '₹', hint: 'After tax income credited to your account', min: 10000, max: 500000, step: 5000, increments: [10000, 25000, 50000] },
     ]
   },
   {
     title: 'Monthly Outflows',
     icon: '💸',
     fields: [
-      { key: 'monthly_expenses', label: 'Monthly Expenses', type: 'number', placeholder: '30000', unit: '₹', hint: 'Rent, groceries, utilities, subscriptions etc.' },
-      { key: 'total_emis', label: 'Total Monthly EMIs', type: 'number', placeholder: '10000', unit: '₹', hint: 'All active loan repayments combined' },
+      { key: 'monthly_expenses', label: 'Monthly Expenses', type: 'number', placeholder: '30000', unit: '₹', hint: 'Rent, groceries, utilities, subscriptions etc.', min: 5000, max: 300000, step: 2000, increments: [5000, 10000, 25000] },
+      { key: 'total_emis', label: 'Total Monthly EMIs', type: 'number', placeholder: '10000', unit: '₹', hint: 'All active loan repayments combined', min: 0, max: 200000, step: 1000, increments: [5000, 10000, 20000] },
     ]
   },
   {
     title: 'Assets & Liabilities',
     icon: '🏦',
     fields: [
-      { key: 'total_assets', label: 'Total Assets', type: 'number', placeholder: '500000', unit: '₹', hint: 'Property, gold, FDs, mutual funds, cash' },
-      { key: 'total_liabilities', label: 'Total Liabilities', type: 'number', placeholder: '200000', unit: '₹', hint: 'Outstanding loan balances' },
+      { key: 'total_assets', label: 'Total Assets', type: 'number', placeholder: '500000', unit: '₹', hint: 'Property, gold, FDs, mutual funds, cash', min: 0, max: 20000000, step: 50000, increments: [50000, 100000, 500000] },
+      { key: 'total_liabilities', label: 'Total Liabilities', type: 'number', placeholder: '200000', unit: '₹', hint: 'Outstanding loan balances', min: 0, max: 10000000, step: 50000, increments: [50000, 100000, 500000] },
     ]
   },
   {
     title: 'Investments & Emergency',
     icon: '📈',
     fields: [
-      { key: 'current_investments', label: 'Current Investment Corpus', type: 'number', placeholder: '150000', unit: '₹', hint: 'Mutual funds, stocks, PF, bonds' },
-      { key: 'emergency_fund', label: 'Emergency Fund Balance', type: 'number', placeholder: '90000', unit: '₹', hint: 'Liquid savings set aside for emergencies' },
+      { key: 'current_investments', label: 'Current Investment Corpus', type: 'number', placeholder: '150000', unit: '₹', hint: 'Mutual funds, stocks, PF, bonds', min: 0, max: 10000000, step: 25000, increments: [25000, 50000, 100000] },
+      { key: 'emergency_fund', label: 'Emergency Fund Balance', type: 'number', placeholder: '90000', unit: '₹', hint: 'Liquid savings set aside for emergencies', min: 0, max: 2000000, step: 10000, increments: [10000, 25000, 50000] },
     ]
   },
 ];
@@ -170,16 +170,59 @@ function SavingsRateBar({ rate, target = 20 }) {
   );
 }
 
+import { useAuth } from './context/AuthContext';
+import { Link } from 'react-router-dom';
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function FinancialAdvisor() {
+  const { user, getEngineData, saveEngineData } = useAuth();
   const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState({});
+
+  const defaultAdvisorData = {
+    age: 28,
+    monthly_income: 75000,
+    monthly_expenses: 30000,
+    total_emis: 10000,
+    total_assets: 500000,
+    total_liabilities: 200000,
+    current_investments: 150000,
+    emergency_fund: 90000,
+    dependents: 0,
+    monthly_sip: 15000
+  };
+
+  const [formData, setFormData] = useState(() => {
+    const stored = getEngineData ? getEngineData('advisor') : null;
+    return stored ? { ...defaultAdvisorData, ...stored } : defaultAdvisorData;
+  });
+
+  const [isAutofilled, setIsAutofilled] = useState(() => {
+    return Boolean(getEngineData && getEngineData('advisor'));
+  });
+
+  useEffect(() => {
+    if (getEngineData) {
+      const stored = getEngineData('advisor');
+      if (stored) {
+        setFormData(prev => ({ ...prev, ...stored }));
+        setIsAutofilled(true);
+      }
+    }
+  }, [getEngineData]);
+
   const [result, setResult] = useState(null);
   const [animating, setAnimating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
 
-  const handleChange = (key, val) => setFormData(prev => ({ ...prev, [key]: val }));
+  const handleChange = (key, val) => {
+    setFormData(prev => ({ ...prev, [key]: val }));
+  };
+
+  const applyPreset = (preset) => {
+    setFormData(prev => ({ ...prev, ...preset }));
+    setIsAutofilled(false);
+  };
 
   const isStepValid = () => {
     const fields = STEPS[step].fields;
@@ -198,6 +241,24 @@ export default function FinancialAdvisor() {
         setLoading(true);
         setLoadingStep(0);
 
+        const numericData = {
+          monthly_income: Number(formData.monthly_income) || 0,
+          monthly_expenses: Number(formData.monthly_expenses) || 0,
+          total_emis: Number(formData.total_emis) || 0,
+          total_assets: Number(formData.total_assets) || 0,
+          total_liabilities: Number(formData.total_liabilities) || 0,
+          current_investments: Number(formData.current_investments) || 0,
+          emergency_fund: Number(formData.emergency_fund) || 0,
+          age: Number(formData.age) || 28,
+          dependents: Number(formData.dependents) || 0,
+          monthly_sip: Number(formData.monthly_sip) || 0
+        };
+
+        // Save to profile
+        if (saveEngineData) {
+          saveEngineData('advisor', numericData);
+        }
+
         const messages = [
           "Analyzing cash flow patterns...",
           "Evaluating asset-liability ratio...",
@@ -215,7 +276,7 @@ export default function FinancialAdvisor() {
           const response = await fetch("http://localhost:8000/api/advisor", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(formData)
+            body: JSON.stringify(numericData)
           });
           if (!response.ok) throw new Error(`API returned status ${response.status}`);
           const res = await response.json();
@@ -235,7 +296,7 @@ export default function FinancialAdvisor() {
     setTimeout(() => { setStep(s => s - 1); setAnimating(false); }, 200);
   };
 
-  const reset = () => { setResult(null); setStep(0); setFormData({}); };
+  const reset = () => { setResult(null); setStep(0); };
 
   // ─── LOADING VIEW ───────────────────────────────────────────────────────────
   if (loading) {
@@ -745,14 +806,86 @@ export default function FinancialAdvisor() {
   return (
     <div className="adv-page">
       <header className="adv-header">
-        <div className="adv-logo">
+        <Link to="/" className="adv-logo" style={{ textDecoration: 'none' }}>
           <div className="adv-logo-icon">F</div>
           FINEXO · <span>AI Financial Advisor</span>
+        </Link>
+        <div className="adv-header-actions">
+          {user && (
+            <div className="adv-user-badge">
+              <span>👤 {user.name}</span>
+            </div>
+          )}
+          <Link to="/" className="adv-reset-btn">← Back to Hub</Link>
         </div>
-        <a href="/" className="adv-reset-btn">← Back to Home</a>
       </header>
 
       <div className="adv-form-wrapper">
+        {/* Autofill Notification Pill */}
+        {isAutofilled && (
+          <div className="adv-autofill-banner">
+            <span className="autofill-icon">✨</span>
+            <span>Pre-filled with your saved profile parameters. You can edit any field anytime.</span>
+          </div>
+        )}
+
+        {/* Fast Presets on Step 0 */}
+        {step === 0 && (
+          <div className="adv-presets-wrap">
+            <span className="presets-label">⚡ 1-Click Profile Presets:</span>
+            <div className="presets-row">
+              <button 
+                type="button" 
+                className="adv-preset-btn"
+                onClick={() => applyPreset({
+                  age: 25,
+                  monthly_income: 55000,
+                  monthly_expenses: 24000,
+                  total_emis: 0,
+                  total_assets: 250000,
+                  total_liabilities: 0,
+                  current_investments: 80000,
+                  emergency_fund: 60000
+                })}
+              >
+                💼 Early Career (₹55k)
+              </button>
+              <button 
+                type="button" 
+                className="adv-preset-btn"
+                onClick={() => applyPreset({
+                  age: 32,
+                  monthly_income: 120000,
+                  monthly_expenses: 52000,
+                  total_emis: 22000,
+                  total_assets: 1800000,
+                  total_liabilities: 650000,
+                  current_investments: 750000,
+                  emergency_fund: 300000
+                })}
+              >
+                🚀 Mid Career (₹1.2L)
+              </button>
+              <button 
+                type="button" 
+                className="adv-preset-btn"
+                onClick={() => applyPreset({
+                  age: 42,
+                  monthly_income: 260000,
+                  monthly_expenses: 95000,
+                  total_emis: 45000,
+                  total_assets: 6500000,
+                  total_liabilities: 1800000,
+                  current_investments: 3200000,
+                  emergency_fund: 800000
+                })}
+              >
+                👑 High Earner (₹2.6L)
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Progress bar */}
         <div className="form-progress">
           {STEPS.map((s, i) => (
@@ -764,51 +897,183 @@ export default function FinancialAdvisor() {
           ))}
         </div>
 
-        {/* Card */}
-        <div className={`form-card ${animating ? 'fade-out' : 'fade-in'}`}>
-          <div className="form-card-icon">{currentStep.icon}</div>
-          <h2 className="form-card-title">{currentStep.title}</h2>
-          <p className="form-card-sub">Step {step + 1} of {STEPS.length}</p>
+        {/* Card & Live Cockpit Container */}
+        <div className="adv-cockpit-grid">
+          {/* Main Card */}
+          <div className={`form-card ${animating ? 'fade-out' : 'fade-in'}`}>
+            <div className="form-card-icon">{currentStep.icon}</div>
+            <h2 className="form-card-title">{currentStep.title}</h2>
+            <p className="form-card-sub">Step {step + 1} of {STEPS.length} · Interactive Input Cockpit</p>
 
-          <div className="form-fields">
-            {currentStep.fields.map((field) => (
-              <div key={field.key} className="form-field">
-                <label className="field-label">{field.label}</label>
-                <div className="field-input-wrap">
-                  <span className="field-unit">{field.unit}</span>
-                  <input
-                    id={field.key}
-                    type={field.type}
-                    className="field-input"
-                    placeholder={field.placeholder}
-                    value={formData[field.key] || ''}
-                    onChange={e => handleChange(field.key, e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && nextStep()}
-                    min="0"
-                  />
-                </div>
-                <p className="field-hint">{field.hint}</p>
-              </div>
-            ))}
+            <div className="form-fields">
+              {currentStep.fields.map((field) => {
+                const val = Number(formData[field.key]) || 0;
+                return (
+                  <div key={field.key} className="form-field-cockpit">
+                    <div className="field-header-row">
+                      <label className="field-label">{field.label}</label>
+                      <span className="field-live-badge">
+                        {field.unit === '₹' 
+                          ? val >= 10000000 
+                            ? `₹${(val / 10000000).toFixed(2)} Cr`
+                            : val >= 100000 
+                              ? `₹${(val / 100000).toFixed(2)} Lakhs`
+                              : `₹${val.toLocaleString('en-IN')}`
+                          : `${val} ${field.unit}`}
+                      </span>
+                    </div>
+
+                    <div className="field-input-wrap">
+                      <span className="field-unit">{field.unit}</span>
+                      <input
+                        id={field.key}
+                        type="number"
+                        className="field-input"
+                        placeholder={field.placeholder}
+                        value={formData[field.key] ?? ''}
+                        onChange={e => handleChange(field.key, e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && nextStep()}
+                        min="0"
+                      />
+                    </div>
+
+                    {/* Synchronized Range Slider */}
+                    {field.min !== undefined && (
+                      <div className="field-slider-wrap">
+                        <input
+                          type="range"
+                          min={field.min}
+                          max={field.max}
+                          step={field.step}
+                          value={val}
+                          onChange={e => handleChange(field.key, e.target.value)}
+                          className="adv-range-slider"
+                        />
+                        <div className="slider-labels">
+                          <span>{field.unit === '₹' ? `₹${(field.min/1000).toFixed(0)}k` : `${field.min}`}</span>
+                          <span>{field.unit === '₹' ? `₹${(field.max/100000).toFixed(0)}L` : `${field.max}`}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quick Increment Chips */}
+                    {field.increments && (
+                      <div className="field-chip-row">
+                        <span className="chip-label">Quick Adjust:</span>
+                        {field.increments.map(inc => (
+                          <button
+                            key={inc}
+                            type="button"
+                            className="adv-chip-btn"
+                            onClick={() => handleChange(field.key, val + inc)}
+                          >
+                            +₹{(inc / 1000).toFixed(0)}k
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className="adv-chip-btn reset-chip"
+                          onClick={() => handleChange(field.key, Math.max(0, val - 10000))}
+                        >
+                          -₹10k
+                        </button>
+                      </div>
+                    )}
+
+                    <p className="field-hint">{field.hint}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="form-actions">
+              {step > 0 && (
+                <button className="btn-secondary" onClick={prevStep}>← Back</button>
+              )}
+              <button
+                className={`btn-primary ${!isStepValid() ? 'disabled' : ''}`}
+                onClick={nextStep}
+                disabled={!isStepValid()}
+              >
+                {step === STEPS.length - 1 ? '🚀 Generate My Report' : 'Next →'}
+              </button>
+            </div>
           </div>
 
-          <div className="form-actions">
-            {step > 0 && (
-              <button className="btn-secondary" onClick={prevStep}>← Back</button>
-            )}
-            <button
-              className={`btn-primary ${!isStepValid() ? 'disabled' : ''}`}
-              onClick={nextStep}
-              disabled={!isStepValid()}
-            >
-              {step === STEPS.length - 1 ? '🚀 Generate My Report' : 'Next →'}
-            </button>
+          {/* Live Micro-Preview Cockpit Widget */}
+          <div className="adv-live-preview-box">
+            <div className="preview-header">
+              <span className="live-dot pulse" />
+              <h3>Live Micro-Analysis Preview</h3>
+            </div>
+
+            {(() => {
+              const inc = Number(formData.monthly_income) || 0;
+              const exp = Number(formData.monthly_expenses) || 0;
+              const emi = Number(formData.total_emis) || 0;
+              const outflows = exp + emi;
+              const surplus = Math.max(0, inc - outflows);
+              const savPct = inc > 0 ? Math.min(100, Math.round((surplus / inc) * 100)) : 0;
+              const dtiPct = inc > 0 ? Math.min(100, Math.round((emi / inc) * 100)) : 0;
+              const emgFund = Number(formData.emergency_fund) || 0;
+              const emgMonths = exp > 0 ? (emgFund / exp).toFixed(1) : '0';
+
+              return (
+                <div className="preview-metrics">
+                  <div className="preview-card-item">
+                    <div className="preview-row-label">
+                      <span>Monthly Surplus Cashflow</span>
+                      <strong className={surplus > 0 ? 'text-green' : 'text-red'}>₹{surplus.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div className="preview-bar-track">
+                      <div className="preview-bar-fill green" style={{ width: `${savPct}%` }} />
+                    </div>
+                    <div className="preview-row-sub">
+                      <span>Savings Rate: <strong>{savPct}%</strong></span>
+                      <span>Target: <strong>20%+</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="preview-card-item">
+                    <div className="preview-row-label">
+                      <span>Debt-to-Income (DTI Ratio)</span>
+                      <strong className={dtiPct <= 35 ? 'text-green' : dtiPct <= 50 ? 'text-yellow' : 'text-red'}>{dtiPct}%</strong>
+                    </div>
+                    <div className="preview-bar-track">
+                      <div className={`preview-bar-fill ${dtiPct <= 35 ? 'green' : dtiPct <= 50 ? 'yellow' : 'red'}`} style={{ width: `${dtiPct}%` }} />
+                    </div>
+                    <div className="preview-row-sub">
+                      <span>EMI Burden: <strong>₹{emi.toLocaleString('en-IN')}/mo</strong></span>
+                      <span>Safe Limit: <strong>&lt; 35%</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="preview-card-item">
+                    <div className="preview-row-label">
+                      <span>Emergency Safety Buffer</span>
+                      <strong className={Number(emgMonths) >= 6 ? 'text-green' : Number(emgMonths) >= 3 ? 'text-yellow' : 'text-red'}>{emgMonths} Mo</strong>
+                    </div>
+                    <div className="preview-bar-track">
+                      <div className={`preview-bar-fill ${Number(emgMonths) >= 6 ? 'green' : 'yellow'}`} style={{ width: `${Math.min(100, (Number(emgMonths) / 6) * 100)}%` }} />
+                    </div>
+                    <div className="preview-row-sub">
+                      <span>Fund: <strong>₹{emgFund.toLocaleString('en-IN')}</strong></span>
+                      <span>Target: <strong>6 Months</strong></span>
+                    </div>
+                  </div>
+
+                  <div className="preview-tip-pill">
+                    💡 Adjust numbers above to see immediate cashflow impacts before running the AI model.
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
 
       <footer className="adv-footer">
-        <p>Your data never leaves your browser · FINEXO AI · For educational purposes only</p>
+        <p>Your data is securely stored for autofill & never shared with third parties · FINEXO AI</p>
       </footer>
     </div>
   );

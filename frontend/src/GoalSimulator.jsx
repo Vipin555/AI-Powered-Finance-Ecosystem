@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './simulator.css';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-IN');
@@ -54,13 +54,19 @@ function AllocationBar({ alloc }) {
   );
 }
 
+import { useAuth } from './context/AuthContext';
+import { Link } from 'react-router-dom';
+
 export default function GoalSimulator() {
+  const { user, getEngineData, saveEngineData } = useAuth();
   const [step, setStep] = useState(0);
-  const [goals, setGoals] = useState([
+
+  const defaultGoals = [
     { id: 1, name: 'Retirement', target_amount_today: 50000000, years_to_goal: 25, inflation_rate: 0.06 },
     { id: 2, name: 'Dream Home', target_amount_today: 15000000, years_to_goal: 10, inflation_rate: 0.08 },
-  ]);
-  const [finData, setFinData] = useState({
+  ];
+
+  const defaultFinData = {
     current_corpus: 1500000,
     monthly_sip: 50000,
     user_iss: 0.8,
@@ -70,7 +76,39 @@ export default function GoalSimulator() {
     savings_rate: 0.20,
     emergency_coverage: 4.5,
     age: 32,
+  };
+
+  const [goals, setGoals] = useState(() => {
+    const stored = getEngineData ? getEngineData('simulator') : null;
+    return stored?.goals && stored.goals.length > 0 
+      ? stored.goals.map((g, i) => ({ id: i + 1, ...g }))
+      : defaultGoals;
   });
+
+  const [finData, setFinData] = useState(() => {
+    const stored = getEngineData ? getEngineData('simulator') : null;
+    return stored?.finData ? { ...defaultFinData, ...stored.finData } : defaultFinData;
+  });
+
+  const [isAutofilled, setIsAutofilled] = useState(() => {
+    return Boolean(getEngineData && getEngineData('simulator'));
+  });
+
+  useEffect(() => {
+    if (getEngineData) {
+      const stored = getEngineData('simulator');
+      if (stored) {
+        if (stored.goals && stored.goals.length > 0) {
+          setGoals(stored.goals.map((g, i) => ({ id: i + 1, ...g })));
+        }
+        if (stored.finData) {
+          setFinData(prev => ({ ...prev, ...stored.finData }));
+        }
+        setIsAutofilled(true);
+      }
+    }
+  }, [getEngineData]);
+
   const [result, setResult] = useState(null);
   const [baseRequest, setBaseRequest] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -85,6 +123,11 @@ export default function GoalSimulator() {
   const removeGoal = (id) => setGoals(goals.filter(g => g.id !== id));
   const updateGoal = (id, key, val) => setGoals(goals.map(g => g.id === id ? { ...g, [key]: Number(val) } : g));
   const updateGoalName = (id, val) => setGoals(goals.map(g => g.id === id ? { ...g, name: val } : g));
+
+  const applyGoalPreset = (presetGoals) => {
+    setGoals(presetGoals.map((g, i) => ({ id: i + 1, ...g })));
+    setIsAutofilled(false);
+  };
 
   const buildPayload = () => ({
     goals: goals.map(({ id, ...rest }) => rest),
@@ -114,6 +157,15 @@ export default function GoalSimulator() {
     }
     try {
       const payload = buildPayload();
+
+      // Persist simulation parameters for user
+      if (saveEngineData) {
+        saveEngineData('simulator', {
+          goals: payload.goals,
+          finData: finData
+        });
+      }
+
       const res = await fetch('http://localhost:8000/api/simulator', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -358,11 +410,69 @@ export default function GoalSimulator() {
     <div className="sim-page">
       <div className="bg-gradient-mesh"/>
       <header className="sim-header glass-nav">
-        <div className="sim-logo"><div className="sim-logo-icon">🔮</div>FINEXO · <span>Future Simulator</span></div>
-        <a href="/" className="sim-back-btn hover-glow">← Back to Hub</a>
+        <Link to="/" className="sim-logo" style={{ textDecoration: 'none', color: '#fff' }}>
+          <div className="sim-logo-icon">🔮</div>
+          FINEXO · <span>Future Simulator</span>
+        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          {user && (
+            <div style={{ background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#818cf8', fontSize: '0.8rem', fontWeight: 600, padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+              <span>👤 {user.name}</span>
+            </div>
+          )}
+          <Link to="/" className="sim-back-btn hover-glow">← Back to Hub</Link>
+        </div>
       </header>
 
       <div className="sim-container slide-up">
+        {/* Autofill Notification */}
+        {isAutofilled && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '0.82rem', fontWeight: 600, padding: '0.6rem 1.2rem', borderRadius: '100px', marginBottom: '1.5rem', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)' }}>
+            <span>✨ Simulation parameters restored from your saved profile. Adjust any goal anytime.</span>
+          </div>
+        )}
+
+        {/* 1-Click Goal Presets */}
+        {step === 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', width: '100%' }}>
+            <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              ⚡ 1-Click Goal Portfolio Presets:
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.6rem' }}>
+              <button
+                type="button"
+                style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                onClick={() => applyGoalPreset([
+                  { name: 'Early FIRE Retirement', target_amount_today: 40000000, years_to_goal: 15, inflation_rate: 0.06 },
+                  { name: 'Child Global College', target_amount_today: 8000000, years_to_goal: 10, inflation_rate: 0.08 }
+                ])}
+              >
+                🏝️ FIRE + Child Education
+              </button>
+              <button
+                type="button"
+                style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                onClick={() => applyGoalPreset([
+                  { name: 'Villa Purchase in Bangalore', target_amount_today: 18000000, years_to_goal: 7, inflation_rate: 0.07 },
+                  { name: 'Luxury EV Car', target_amount_today: 3500000, years_to_goal: 3, inflation_rate: 0.05 }
+                ])}
+              >
+                🏡 Dream Home & Luxury EV
+              </button>
+              <button
+                type="button"
+                style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                onClick={() => applyGoalPreset([
+                  { name: 'Comfortable Retirement', target_amount_today: 60000000, years_to_goal: 25, inflation_rate: 0.06 },
+                  { name: 'Sabbatical / World Tour', target_amount_today: 2500000, years_to_goal: 4, inflation_rate: 0.06 }
+                ])}
+              >
+                🌍 Global Tour + Retirement
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="sim-steps-container">
           <div className="progress-line" style={{ width: step === 0 ? '50%' : '100%' }}/>
           <div className="sim-steps">
@@ -400,23 +510,71 @@ export default function GoalSimulator() {
                     </div>
                     <div className="goal-inputs">
                       <div className="field modern-field">
-                        <label>Cost Today (₹)</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <label>Cost Today (₹)</label>
+                          <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#ec4899' }}>
+                            {g.target_amount_today >= 10000000 
+                              ? `₹${(g.target_amount_today / 10000000).toFixed(2)} Cr` 
+                              : `₹${(g.target_amount_today / 100000).toFixed(2)} L`}
+                          </span>
+                        </div>
                         <div className="input-prefix"><span>₹</span>
                           <input type="number" value={g.target_amount_today} onChange={e => updateGoal(g.id, 'target_amount_today', e.target.value)} />
                         </div>
+                        <input
+                          type="range"
+                          min="500000"
+                          max="100000000"
+                          step="500000"
+                          value={g.target_amount_today}
+                          onChange={e => updateGoal(g.id, 'target_amount_today', e.target.value)}
+                          className="adv-range-slider"
+                          style={{ accentColor: '#ec4899', marginTop: '6px' }}
+                        />
                       </div>
                       <div className="field modern-field">
-                        <label>Years Away</label>
+                        <label>Years Away: <strong>{g.years_to_goal} yrs</strong></label>
                         <div className="input-prefix"><span>⌛</span>
                           <input type="number" value={g.years_to_goal} onChange={e => updateGoal(g.id, 'years_to_goal', e.target.value)} />
                         </div>
+                        <input
+                          type="range"
+                          min="1"
+                          max="40"
+                          step="1"
+                          value={g.years_to_goal}
+                          onChange={e => updateGoal(g.id, 'years_to_goal', e.target.value)}
+                          className="adv-range-slider"
+                          style={{ accentColor: '#ec4899', marginTop: '6px' }}
+                        />
                       </div>
                       <div className="field modern-field">
-                        <label>Inflation (%)</label>
+                        <label>Inflation: <strong>{(g.inflation_rate * 100).toFixed(1)}%</strong></label>
                         <div className="input-prefix"><span>%</span>
                           <input type="number" step="0.5" value={(g.inflation_rate * 100).toFixed(1)} onChange={e => updateGoal(g.id, 'inflation_rate', e.target.value / 100)} />
                         </div>
+                        <input
+                          type="range"
+                          min="0.02"
+                          max="0.15"
+                          step="0.005"
+                          value={g.inflation_rate}
+                          onChange={e => updateGoal(g.id, 'inflation_rate', e.target.value)}
+                          className="adv-range-slider"
+                          style={{ accentColor: '#ec4899', marginTop: '6px' }}
+                        />
                       </div>
+                    </div>
+
+                    {/* Live Inflated Target Cost Preview Box */}
+                    <div style={{ marginTop: '0.8rem', background: 'rgba(236, 72, 153, 0.08)', border: '1px solid rgba(236, 72, 153, 0.25)', borderRadius: '10px', padding: '0.6rem 0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
+                      <span style={{ color: '#94a3b8' }}>Estimated Future Target Cost (Inflation Adjusted):</span>
+                      <strong style={{ color: '#ec4899', fontFamily: 'Outfit, sans-serif', fontSize: '0.95rem' }}>
+                        {(() => {
+                          const fv = g.target_amount_today * Math.pow(1 + g.inflation_rate, g.years_to_goal);
+                          return fv >= 10000000 ? `₹${(fv / 10000000).toFixed(2)} Cr` : `₹${Math.round(fv / 100000).toLocaleString('en-IN')} Lakhs`;
+                        })()}
+                      </strong>
                     </div>
                   </div>
                 ))}
@@ -437,44 +595,84 @@ export default function GoalSimulator() {
               <div className="form-grid modern-grid">
                 {/* Row 1 */}
                 <div className="field modern-field highlight-box">
-                  <label>Current Corpus (₹)</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <label>Current Corpus (₹)</label>
+                    <span style={{ fontSize: '0.78rem', color: '#60a5fa', fontWeight: 700 }}>
+                      ₹{(Number(finData.current_corpus) / 100000).toFixed(1)} Lakhs
+                    </span>
+                  </div>
                   <div className="input-prefix"><span>₹</span>
                     <input type="number" value={finData.current_corpus} onChange={e => setFinData({...finData, current_corpus: e.target.value})} />
                   </div>
+                  <input
+                    type="range" min="0" max="20000000" step="100000" value={finData.current_corpus}
+                    onChange={e => setFinData({...finData, current_corpus: e.target.value})}
+                    className="adv-range-slider" style={{ accentColor: '#3b82f6', marginTop: '6px' }}
+                  />
                 </div>
                 <div className="field modern-field highlight-box">
-                  <label>Monthly SIP (₹)</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <label>Monthly SIP (₹)</label>
+                    <span style={{ fontSize: '0.78rem', color: '#10b981', fontWeight: 700 }}>
+                      ₹{(Number(finData.monthly_sip) / 1000).toFixed(0)}k/mo
+                    </span>
+                  </div>
                   <div className="input-prefix"><span>₹</span>
                     <input type="number" value={finData.monthly_sip} onChange={e => setFinData({...finData, monthly_sip: e.target.value})} />
                   </div>
+                  <input
+                    type="range" min="0" max="200000" step="5000" value={finData.monthly_sip}
+                    onChange={e => setFinData({...finData, monthly_sip: e.target.value})}
+                    className="adv-range-slider" style={{ accentColor: '#10b981', marginTop: '6px' }}
+                  />
                 </div>
 
                 {/* Row 2 */}
                 <div className="field modern-field">
-                  <label>Age</label>
+                  <label>Age: {finData.age} yrs</label>
                   <div className="input-prefix"><span>👤</span>
                     <input type="number" min="18" max="80" value={finData.age} onChange={e => setFinData({...finData, age: e.target.value})} />
                   </div>
+                  <input
+                    type="range" min="18" max="75" step="1" value={finData.age}
+                    onChange={e => setFinData({...finData, age: e.target.value})}
+                    className="adv-range-slider" style={{ marginTop: '6px' }}
+                  />
                 </div>
                 <div className="field modern-field">
-                  <label>Expected Annual Return (%)</label>
+                  <label>Expected Annual Return: {(finData.expected_return * 100).toFixed(1)}%</label>
                   <div className="input-prefix"><span>%</span>
                     <input type="number" step="0.5" value={(finData.expected_return * 100).toFixed(1)} onChange={e => setFinData({...finData, expected_return: e.target.value / 100})} />
                   </div>
+                  <input
+                    type="range" min="0.05" max="0.25" step="0.005" value={finData.expected_return}
+                    onChange={e => setFinData({...finData, expected_return: e.target.value})}
+                    className="adv-range-slider" style={{ marginTop: '6px' }}
+                  />
                 </div>
 
                 {/* Row 3 */}
                 <div className="field modern-field">
-                  <label>Savings Rate (%)</label>
+                  <label>Savings Rate: {(finData.savings_rate * 100).toFixed(0)}%</label>
                   <div className="input-prefix"><span>💰</span>
                     <input type="number" step="1" value={(finData.savings_rate * 100).toFixed(0)} onChange={e => setFinData({...finData, savings_rate: e.target.value / 100})} />
                   </div>
+                  <input
+                    type="range" min="0.05" max="0.75" step="0.05" value={finData.savings_rate}
+                    onChange={e => setFinData({...finData, savings_rate: e.target.value})}
+                    className="adv-range-slider" style={{ marginTop: '6px' }}
+                  />
                 </div>
                 <div className="field modern-field">
-                  <label>Emergency Coverage (months)</label>
+                  <label>Emergency Coverage: {finData.emergency_coverage} months</label>
                   <div className="input-prefix"><span>🛡️</span>
                     <input type="number" step="0.5" value={finData.emergency_coverage} onChange={e => setFinData({...finData, emergency_coverage: e.target.value})} />
                   </div>
+                  <input
+                    type="range" min="1" max="12" step="0.5" value={finData.emergency_coverage}
+                    onChange={e => setFinData({...finData, emergency_coverage: e.target.value})}
+                    className="adv-range-slider" style={{ marginTop: '6px' }}
+                  />
                 </div>
 
                 {/* Risk Profile */}

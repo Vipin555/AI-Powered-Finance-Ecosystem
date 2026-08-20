@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './tax.css';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-IN');
@@ -83,7 +83,7 @@ const STEPS = [
   {
     title: 'Personal Details', icon: '👤',
     fields: [
-      { key: 'age', label: 'Your Age', unit: 'yrs', placeholder: '32', hint: 'Senior citizens (60+) get higher 80D limits.' },
+      { key: 'age', label: 'Your Age', unit: 'yrs', placeholder: '32', hint: 'Senior citizens (60+) get higher 80D limits.', min: 18, max: 80, step: 1 },
       { key: 'residential_status', label: 'Residential Status', type: 'select', options: ['Resident', 'NRI'], hint: 'NRIs have different tax treaty implications.' },
       { key: 'regime_choice', label: 'Regime Preference', type: 'select', options: ['Auto', 'Old', 'New'], hint: 'Auto = engine picks the lower-tax regime for you.' },
     ],
@@ -91,58 +91,110 @@ const STEPS = [
   {
     title: 'Income Sources', icon: '💼',
     fields: [
-      { key: 'salary_income', label: 'Salary / CTC (Annual)', unit: '₹', placeholder: '12,00,000', hint: 'Your annual salary. Standard deduction of ₹75,000 is auto-applied for New Regime, ₹50,000 for Old.' },
-      { key: 'business_income', label: 'Business / Freelance Income', unit: '₹', placeholder: '0', hint: 'Net profit from business or professional services.', optional: true },
-      { key: 'rental_income', label: 'Annual Rental Income', unit: '₹', placeholder: '0', hint: '30% standard deduction is auto-applied under Sec 24(a).', optional: true },
-      { key: 'interest_income', label: 'Interest Income (FD/Savings)', unit: '₹', placeholder: '0', hint: 'Interest from FDs, savings accounts, bonds. Fully taxable at slab.', optional: true },
+      { key: 'salary_income', label: 'Salary / CTC (Annual)', unit: '₹', placeholder: '12,00,000', hint: 'Your annual salary. Standard deduction applies automatically.', min: 0, max: 5000000, step: 50000, increments: [50000, 100000, 500000] },
+      { key: 'business_income', label: 'Business / Freelance Income', unit: '₹', placeholder: '0', hint: 'Net profit from business or professional services.', optional: true, min: 0, max: 5000000, step: 50000 },
+      { key: 'rental_income', label: 'Annual Rental Income', unit: '₹', placeholder: '0', hint: '30% standard deduction is auto-applied under Sec 24(a).', optional: true, min: 0, max: 2000000, step: 25000 },
+      { key: 'interest_income', label: 'Interest Income (FD/Savings)', unit: '₹', placeholder: '0', hint: 'Interest from FDs, savings accounts, bonds. Fully taxable at slab.', optional: true, min: 0, max: 1000000, step: 10000 },
     ],
   },
   {
     title: 'Capital Gains', icon: '📈',
     fields: [
-      { key: 'stcg', label: 'Equity STCG (held < 1 year)', unit: '₹', placeholder: '0', hint: 'Short-term capital gains on equity/equity funds. Taxed at 20% (Budget 2024).', optional: true },
-      { key: 'ltcg', label: 'Equity LTCG (held > 1 year)', unit: '₹', placeholder: '0', hint: 'Long-term capital gains on equity. ₹1.25L exempt, balance taxed at 12.5%.', optional: true },
-      { key: 'stcg_debt', label: 'Debt Fund STCG/LTCG', unit: '₹', placeholder: '0', hint: 'Debt mutual fund gains (post Apr 2023) — taxed at slab rate.', optional: true },
+      { key: 'stcg', label: 'Equity STCG (held < 1 year)', unit: '₹', placeholder: '0', hint: 'Short-term capital gains on equity/equity funds. Taxed at 20% (Budget 2024).', optional: true, min: 0, max: 2000000, step: 25000 },
+      { key: 'ltcg', label: 'Equity LTCG (held > 1 year)', unit: '₹', placeholder: '0', hint: 'Long-term capital gains on equity. ₹1.25L exempt, balance taxed at 12.5%.', optional: true, min: 0, max: 2000000, step: 25000 },
+      { key: 'stcg_debt', label: 'Debt Fund STCG/LTCG', unit: '₹', placeholder: '0', hint: 'Debt mutual fund gains (post Apr 2023) — taxed at slab rate.', optional: true, min: 0, max: 2000000, step: 25000 },
     ],
   },
   {
     title: 'Deductions', icon: '💰',
     fields: [
-      { key: 'c80c', label: '80C Investments (ELSS/PPF/LIC/EPF)', unit: '₹', placeholder: '1,50,000', hint: 'Max benefit ₹1.5L. Includes EPF auto-contribution too.', optional: true },
-      { key: 'nps', label: 'Additional NPS 80CCD(1B)', unit: '₹', placeholder: '50,000', hint: 'Extra ₹50K deduction beyond 80C limit.', optional: true },
-      { key: 'c80d', label: 'Health Insurance Premium (80D)', unit: '₹', placeholder: '25,000', hint: 'Max ₹25K below 60, ₹50K for senior citizens.', optional: true },
+      { key: 'c80c', label: '80C Investments (ELSS/PPF/LIC/EPF)', unit: '₹', placeholder: '1,50,000', hint: 'Max benefit ₹1.5L. Includes EPF auto-contribution too.', optional: true, min: 0, max: 150000, step: 5000, maxCap: 150000 },
+      { key: 'nps', label: 'Additional NPS 80CCD(1B)', unit: '₹', placeholder: '50,000', hint: 'Extra ₹50K deduction beyond 80C limit.', optional: true, min: 0, max: 50000, step: 5000, maxCap: 50000 },
+      { key: 'c80d', label: 'Health Insurance Premium (80D)', unit: '₹', placeholder: '25,000', hint: 'Max ₹25K below 60, ₹50K for senior citizens.', optional: true, min: 0, max: 75000, step: 5000, maxCap: 25000 },
     ],
   },
   {
     title: 'Loans & HRA', icon: '🏠',
     fields: [
-      { key: 'hra', label: 'HRA Exemption [Sec 10(13A)]', unit: '₹', placeholder: '0', hint: 'Pre-calculated HRA exemption amount. Enter 0 if you own your house.', optional: true },
-      { key: 'home_loan', label: 'Home Loan Interest [Sec 24(b)]', unit: '₹', placeholder: '0', hint: 'Max ₹2L deduction for self-occupied property.', optional: true },
-      { key: 'edu_loan', label: 'Education Loan Interest [80E]', unit: '₹', placeholder: '0', hint: 'No upper limit! Deduction for up to 8 years.', optional: true },
+      { key: 'hra', label: 'HRA Exemption [Sec 10(13A)]', unit: '₹', placeholder: '0', hint: 'Pre-calculated HRA exemption amount. Enter 0 if you own your house.', optional: true, min: 0, max: 500000, step: 10000 },
+      { key: 'home_loan', label: 'Home Loan Interest [Sec 24(b)]', unit: '₹', placeholder: '0', hint: 'Max ₹2L deduction for self-occupied property.', optional: true, min: 0, max: 300000, step: 10000, maxCap: 200000 },
+      { key: 'edu_loan', label: 'Education Loan Interest [80E]', unit: '₹', placeholder: '0', hint: 'No upper limit! Deduction for up to 8 years.', optional: true, min: 0, max: 500000, step: 10000 },
     ],
   },
   {
     title: 'AI Optimization & ML Forecast', icon: '🤖',
     fields: [
-      { key: 'tax_saving_budget', label: 'Available Investment Budget', unit: '₹', placeholder: '1,50,000', hint: 'How much cash can you afford to invest this year specifically to save tax?', optional: true },
+      { key: 'tax_saving_budget', label: 'Available Investment Budget', unit: '₹', placeholder: '1,50,000', hint: 'How much cash can you afford to invest this year specifically to save tax?', optional: true, min: 0, max: 500000, step: 10000 },
       { key: 'risk_profile', label: 'Risk Profile', type: 'select', options: ['Moderate', 'Conservative', 'Aggressive'], hint: 'Determines the mix between Equity (ELSS) and Debt (PPF/FD).', optional: true },
-      { key: 'salary_growth_rate', label: 'Expected Salary Growth', unit: '%', placeholder: '10', hint: 'Used by ML model to forecast next year\'s tax.', optional: true },
-      { key: 'business_growth_rate', label: 'Expected Business Growth', unit: '%', placeholder: '15', hint: 'Used by ML model for business income projection.', optional: true },
-      { key: 'inflation_rate', label: 'Expected Inflation Rate', unit: '%', placeholder: '6', hint: 'Adjusts future deduction value expectations.', optional: true },
+      { key: 'salary_growth_rate', label: 'Expected Salary Growth', unit: '%', placeholder: '10', hint: 'Used by ML model to forecast next year\'s tax.', optional: true, min: 0, max: 50, step: 1 },
+      { key: 'business_growth_rate', label: 'Expected Business Growth', unit: '%', placeholder: '15', hint: 'Used by ML model for business income projection.', optional: true, min: 0, max: 50, step: 1 },
+      { key: 'inflation_rate', label: 'Expected Inflation Rate', unit: '%', placeholder: '6', hint: 'Adjusts future deduction value expectations.', optional: true, min: 0, max: 20, step: 1 },
     ],
   }
 ];
 
+import { useAuth } from './context/AuthContext';
+import { Link } from 'react-router-dom';
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function TaxPlanner() {
+  const { user, getEngineData, saveEngineData } = useAuth();
   const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState({ regime_choice: 'Auto', residential_status: 'Resident' });
+
+  const defaultTaxData = {
+    age: 30,
+    residential_status: 'Resident',
+    regime_choice: 'Auto',
+    salary_income: 1200000,
+    business_income: 0,
+    rental_income: 0,
+    interest_income: 0,
+    stcg: 0,
+    ltcg: 0,
+    stcg_debt: 0,
+    c80c: 150000,
+    c80d: 25000,
+    nps: 50000,
+    hra: 120000,
+    home_loan: 0,
+    edu_loan: 0,
+    tax_saving_budget: 150000,
+    risk_profile: 'Moderate',
+    salary_growth_rate: 10,
+    business_growth_rate: 15,
+    inflation_rate: 6
+  };
+
+  const [formData, setFormData] = useState(() => {
+    const stored = getEngineData ? getEngineData('tax') : null;
+    return stored ? { ...defaultTaxData, ...stored } : defaultTaxData;
+  });
+
+  const [isAutofilled, setIsAutofilled] = useState(() => {
+    return Boolean(getEngineData && getEngineData('tax'));
+  });
+
+  useEffect(() => {
+    if (getEngineData) {
+      const stored = getEngineData('tax');
+      if (stored) {
+        setFormData(prev => ({ ...prev, ...stored }));
+        setIsAutofilled(true);
+      }
+    }
+  }, [getEngineData]);
+
   const [result, setResult] = useState(null);
   const [animating, setAnimating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
 
   const handleChange = (key, val) => setFormData(p => ({ ...p, [key]: val }));
+
+  const applyPreset = (preset) => {
+    setFormData(prev => ({ ...prev, ...preset }));
+    setIsAutofilled(false);
+  };
 
   const isStepValid = () => {
     const required = STEPS[step].fields.filter(f => !f.optional);
@@ -198,6 +250,11 @@ export default function TaxPlanner() {
             inflation_rate: parseFloat(formData.inflation_rate) || 6,
           };
 
+          // Persist data for user
+          if (saveEngineData) {
+            saveEngineData('tax', formData);
+          }
+
           const res = await fetch('http://localhost:8000/api/tax', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -212,7 +269,7 @@ export default function TaxPlanner() {
   };
 
   const prevStep = () => { setAnimating(true); setTimeout(() => { setStep(s => s - 1); setAnimating(false); }, 200); };
-  const reset = () => { setResult(null); setStep(0); setFormData({ regime_choice: 'Auto', residential_status: 'Resident' }); };
+  const reset = () => { setResult(null); setStep(0); };
 
   // ── Loader ──────────────────────────────────────────────────────────────────
   if (loading) {
@@ -530,11 +587,85 @@ export default function TaxPlanner() {
   return (
     <div className="tax-page">
       <header className="tax-header">
-        <div className="tax-logo"><div className="tax-logo-icon">F</div>FINEXO · <span>AI Tax Planner</span></div>
-        <a href="/" className="tax-back-btn">← Back to Home</a>
+        <Link to="/" className="tax-logo" style={{ textDecoration: 'none', color: '#fff' }}>
+          <div className="tax-logo-icon">⚖️</div>
+          FINEXO · <span>AI Tax Planner</span>
+        </Link>
+        <div className="tax-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          {user && (
+            <div className="tax-user-badge" style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#f59e0b', fontSize: '0.8rem', fontWeight: 600, padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+              <span>👤 {user.name}</span>
+            </div>
+          )}
+          <Link to="/" className="tax-back-btn">← Back to Hub</Link>
+        </div>
       </header>
 
       <div className="tax-form-wrapper">
+        {/* Autofill Notification */}
+        {isAutofilled && (
+          <div className="tax-autofill-banner" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', fontSize: '0.82rem', fontWeight: 600, padding: '0.6rem 1.2rem', borderRadius: '100px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)' }}>
+            <span>✨ Pre-filled with your saved tax profile. Edit any value freely.</span>
+          </div>
+        )}
+
+        {/* 1-Click Fast Presets on Step 0 */}
+        {step === 0 && (
+          <div className="tax-presets-wrap" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', width: '100%', maxWidth: '600px' }}>
+            <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#f59e0b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              ⚡ 1-Click Tax Profile Presets:
+            </span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.6rem', width: '100%' }}>
+              <button 
+                type="button" 
+                className="tax-preset-btn"
+                style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                onClick={() => applyPreset({
+                  age: 28,
+                  salary_income: 900000,
+                  c80c: 150000,
+                  c80d: 25000,
+                  nps: 0,
+                  hra: 80000
+                })}
+              >
+                💼 Salaried ₹9L (Standard)
+              </button>
+              <button 
+                type="button" 
+                className="tax-preset-btn"
+                style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                onClick={() => applyPreset({
+                  age: 34,
+                  salary_income: 2200000,
+                  c80c: 150000,
+                  c80d: 50000,
+                  nps: 50000,
+                  hra: 180000,
+                  home_loan: 150000
+                })}
+              >
+                🚀 Senior Tech ₹22L (Max 80C/NPS)
+              </button>
+              <button 
+                type="button" 
+                className="tax-preset-btn"
+                style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#f1f5f9', fontSize: '0.82rem', fontWeight: 600, padding: '0.5rem 0.9rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit' }}
+                onClick={() => applyPreset({
+                  age: 30,
+                  salary_income: 0,
+                  business_income: 1800000,
+                  c80c: 150000,
+                  c80d: 25000,
+                  nps: 50000
+                })}
+              >
+                💻 Freelancer ₹18L (44ADA)
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="form-progress">
           {STEPS.map((s, i) => (
             <div key={i} className={`progress-step ${i <= step ? 'done' : ''}`}>
@@ -545,42 +676,149 @@ export default function TaxPlanner() {
           ))}
         </div>
 
-        <div className={`form-card ${animating ? 'fade-out' : 'fade-in'}`}>
-          <div className="form-card-icon">{cur.icon}</div>
-          <h2 className="form-card-title">{cur.title}</h2>
-          <p className="form-card-sub">Step {step + 1} of {STEPS.length}</p>
+        {/* Cockpit Container */}
+        <div className="tax-cockpit-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.8rem', width: '100%', maxWidth: '980px', alignItems: 'start' }}>
+          <div className={`form-card ${animating ? 'fade-out' : 'fade-in'}`}>
+            <div className="form-card-icon">{cur.icon}</div>
+            <h2 className="form-card-title">{cur.title}</h2>
+            <p className="form-card-sub">Step {step + 1} of {STEPS.length} · Interactive Tax Cockpit</p>
 
-          <div className="form-fields">
-            {cur.fields.map(field => (
-              <div key={field.key} className="form-field">
-                <label className="field-label">
-                  {field.label}
-                  {field.optional && <span className="optional-tag"> (optional)</span>}
-                </label>
-                {field.type === 'select' ? (
-                  <select className="field-select" value={formData[field.key] || field.options[0]}
-                    onChange={e => handleChange(field.key, e.target.value)}>
-                    {field.options.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                ) : (
-                  <div className="field-input-wrap">
-                    <span className="field-unit">{field.unit}</span>
-                    <input type="number" min="0" className="field-input" placeholder={field.placeholder}
-                      value={formData[field.key] || ''}
-                      onChange={e => handleChange(field.key, e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && nextStep()} />
+            <div className="form-fields">
+              {cur.fields.map(field => {
+                const val = Number(formData[field.key]) || 0;
+                return (
+                  <div key={field.key} className="form-field-cockpit" style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px', padding: '1.1rem 1.25rem', marginBottom: '1.1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label className="field-label" style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '0.86rem' }}>
+                        {field.label}
+                        {field.optional && <span className="optional-tag" style={{ fontSize: '0.72rem', color: '#64748b' }}> (optional)</span>}
+                      </label>
+                      {field.type !== 'select' && (
+                        <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.88rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '2px 10px', borderRadius: '100px' }}>
+                          {field.unit === '₹' 
+                            ? val >= 100000 
+                              ? `₹${(val / 100000).toFixed(2)} Lakhs` 
+                              : `₹${val.toLocaleString('en-IN')}`
+                            : `${val}${field.unit}`}
+                        </span>
+                      )}
+                    </div>
+
+                    {field.type === 'select' ? (
+                      <select className="field-select" value={formData[field.key] || field.options[0]}
+                        onChange={e => handleChange(field.key, e.target.value)}
+                        style={{ background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '0.75rem 0.9rem', color: '#fff', fontSize: '0.88rem', outline: 'none' }}>
+                        {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : (
+                      <>
+                        <div className="field-input-wrap">
+                          <span className="field-unit">{field.unit}</span>
+                          <input type="number" min="0" className="field-input" placeholder={field.placeholder}
+                            value={formData[field.key] ?? ''}
+                            onChange={e => handleChange(field.key, e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && nextStep()} />
+                        </div>
+
+                        {field.min !== undefined && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                            <input
+                              type="range"
+                              min={field.min}
+                              max={field.max}
+                              step={field.step}
+                              value={val}
+                              onChange={e => handleChange(field.key, e.target.value)}
+                              className="adv-range-slider"
+                              style={{ accentColor: '#f59e0b' }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>
+                              <span>{field.unit === '₹' ? `₹${(field.min/1000).toFixed(0)}k` : `${field.min}`}</span>
+                              <span>{field.unit === '₹' ? `₹${(field.max/100000).toFixed(0)}L` : `${field.max}`}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Max Cap Button Chips */}
+                        {field.maxCap && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '4px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleChange(field.key, field.maxCap)}
+                              style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#f59e0b', fontSize: '0.72rem', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit' }}
+                            >
+                              ⚡ Max Out Limit (₹{(field.maxCap / 1000).toFixed(0)}k)
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    <p className="field-hint">{field.hint}</p>
                   </div>
-                )}
-                <p className="field-hint">{field.hint}</p>
-              </div>
-            ))}
+                );
+              })}
+            </div>
+
+            <div className="form-actions">
+              {step > 0 && <button className="btn-secondary" onClick={prevStep}>← Back</button>}
+              <button className={`btn-primary ${!isStepValid() ? 'disabled' : ''}`} onClick={nextStep} disabled={!isStepValid()}>
+                {step === STEPS.length - 1 ? '🧾 Compute My Tax' : 'Next →'}
+              </button>
+            </div>
           </div>
 
-          <div className="form-actions">
-            {step > 0 && <button className="btn-secondary" onClick={prevStep}>← Back</button>}
-            <button className={`btn-primary ${!isStepValid() ? 'disabled' : ''}`} onClick={nextStep} disabled={!isStepValid()}>
-              {step === STEPS.length - 1 ? '🧾 Compute My Tax' : 'Next →'}
-            </button>
+          {/* Live Tax Estimator Preview Widget */}
+          <div className="tax-live-preview-box" style={{ background: '#0d111a', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '16px', padding: '1.4rem', boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5)', position: 'sticky', top: '90px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.2rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '0.75rem' }}>
+              <span className="live-dot pulse" style={{ background: '#f59e0b', boxShadow: '0 0 10px #f59e0b' }} />
+              <h3 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>Live Tax Estimator</h3>
+            </div>
+
+            {(() => {
+              const sal = Number(formData.salary_income) || 0;
+              const biz = Number(formData.business_income) || 0;
+              const rent = Number(formData.rental_income) || 0;
+              const totalGti = sal + biz + rent;
+
+              const c80c = Math.min(150000, Number(formData.c80c) || 0);
+              const nps = Math.min(50000, Number(formData.nps) || 0);
+              const c80d = Math.min(75000, Number(formData.c80d) || 0);
+              const hra = Number(formData.hra) || 0;
+              const totalDed = c80c + nps + c80d + hra + 50000; // Old regime deductions
+
+              // Rough live estimator for UI preview
+              const netOldTaxable = Math.max(0, totalGti - totalDed);
+              const netNewTaxable = Math.max(0, totalGti - 75000);
+
+              const estOldTax = netOldTaxable > 1500000 ? netOldTaxable * 0.20 : netOldTaxable > 700000 ? netOldTaxable * 0.12 : 0;
+              const estNewTax = netNewTaxable > 1500000 ? netNewTaxable * 0.15 : netNewTaxable > 700000 ? netNewTaxable * 0.08 : 0;
+              const diff = Math.abs(estOldTax - estNewTax);
+              const winner = estNewTax <= estOldTax ? 'New Regime' : 'Old Regime';
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '10px', padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase' }}>Gross Annual Income</span>
+                    <strong style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.2rem', color: '#fff' }}>₹{totalGti.toLocaleString('en-IN')}</strong>
+                  </div>
+
+                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '10px', padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase' }}>Total Deductions Claimed</span>
+                    <strong style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.1rem', color: '#f59e0b' }}>₹{totalDed.toLocaleString('en-IN')}</strong>
+                  </div>
+
+                  <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '10px', padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#34d399', textTransform: 'uppercase', fontWeight: 700 }}>Projected Best Tax Regime</span>
+                    <strong style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.15rem', color: '#fff' }}>{winner}</strong>
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Est. Tax: ~₹{Math.min(estOldTax, estNewTax).toLocaleString('en-IN')}</span>
+                  </div>
+
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.03)', border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '0.6rem 0.8rem', lineHeight: '1.4' }}>
+                    💡 Slide salary and deduction sliders to see instantaneous updates in regime savings.
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
