@@ -15,6 +15,33 @@
     "passwordHash": "2bf28071bdde29e0169dd96bb9570a5daceee490619b2187f41e23b35f5357a0",
     "role": "user",
     "createdAt": "2026-02-10T14:30:00.000Z",
-    "lastLogin": "2026-08-20T16:11:43.234Z"
+    "lastLogin": "2026-08-21T03:57:14.558Z"
+  },
+  {
+    "id": "user_vishal_003",
+    "name": "Vishal",
+    "email": "vishal@finexo.ai",
+    "passwordHash": "29d24a1cb0695f1a9748795425b70fda46a37ba6a835f71373f12e2df000935e",
+    "role": "user",
+    "createdAt": "2026-08-21T04:00:00.000Z",
+    "lastLogin": "2026-08-21T04:00:00.450Z"
+  },
+  {
+    "id": "user_vedika_004",
+    "name": "Vedika",
+    "email": "vedika@finexo.ai",
+    "passwordHash": "6356e06e3a38d82f0b6cd0b604d9866e24dfd41a1bcd6891a37e0e4ad4679856",
+    "role": "user",
+    "createdAt": "2026-08-21T04:00:00.000Z",
+    "lastLogin": "2026-08-21T04:00:00.482Z"
+  },
+  {
+    "id": "user_jhanak_005",
+    "name": "Jhanak",
+    "email": "jhanak@finexo.ai",
+    "passwordHash": "e3373f9f93d9f2e7cbbf004af366ae29d2ce95e45738aea9f48d7e0e27d1510e",
+    "role": "user",
+    "createdAt": "2026-08-21T04:00:00.000Z",
+    "lastLogin": "2026-08-21T04:00:00.494Z"
   }
 ]

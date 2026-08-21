@@ -219,9 +219,13 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(400).json({ error: 'Email and password are required.' });
   }
 
-  const normalizedEmail = email.toLowerCase().trim();
+  const query = email.toLowerCase().trim();
   const users = readJSON(USERS_FILE, []);
-  const user = users.find(u => u.email.toLowerCase() === normalizedEmail);
+  const user = users.find(u => 
+    u.email.toLowerCase() === query || 
+    u.name.toLowerCase() === query || 
+    u.email.split('@')[0].toLowerCase() === query
+  );
 
   if (!user || user.passwordHash !== hashPassword(password)) {
     return res.status(401).json({ error: 'Invalid email or password.' });
