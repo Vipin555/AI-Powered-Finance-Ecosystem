@@ -246,25 +246,12 @@ function DecryptTextBase({
   const css = `
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border-width:0!important;}
 .${scope} [data-mk-char]{
-  display:inline-block;
+  display:inline;
   font-variant-numeric:tabular-nums;
-  transition:filter 0.2s ease, opacity 0.2s ease;
-}
-.${scope} [data-mk-char][data-state="scramble"]{
-  opacity:0.85;
-  filter:drop-shadow(0 0 8px rgba(129, 140, 248, 0.45));
-}
-.${scope} [data-mk-char][data-state="lock"]{
-  opacity:1;
-  animation:${scope}-pop ${FLASH_MS}ms cubic-bezier(.2,0,0,1);
-}
-@keyframes ${scope}-pop{
-  0%{filter:drop-shadow(0 0 16px rgba(167, 139, 250, 0.8)) brightness(1.3);transform:scale(1.08);}
-  100%{filter:drop-shadow(0 0 0 transparent) brightness(1);transform:scale(1);}
 }
 .${scope} [data-mk-caret]{animation:${scope}-caret 1.1s steps(1) infinite;}
 @keyframes ${scope}-caret{50%{opacity:0;}}
-@media (prefers-reduced-motion: reduce){.${scope} [data-mk-char][data-state="lock"],.${scope} [data-mk-caret]{animation:none;}}
+@media (prefers-reduced-motion: reduce){.${scope} [data-mk-caret]{animation:none;}}
 `;
 
   let cursor = -1;
@@ -272,7 +259,7 @@ function DecryptTextBase({
     <span aria-hidden="true" className="select-none">
       {words.map((word, w) => (
         <React.Fragment key={w}>
-          <span className="inline-block whitespace-pre">
+          <span className="inline whitespace-nowrap">
             {word.map((item) => {
               cursor += 1;
               const at = cursor;
@@ -304,9 +291,11 @@ function DecryptTextBase({
       data-chars={total}
       onPointerEnter={onPointerEnter}
       className={cn(
-        "w-full",
+        Tag === "span" ? "inline" : "w-full block",
         terminal
           ? "block font-mono text-[clamp(0.78rem,2.4vw,1rem)] leading-relaxed"
+          : Tag === "span"
+          ? "inline"
           : "block text-balance text-[clamp(1.6rem,5.2vw,3.3rem)] font-extrabold leading-[1.15] tracking-[-0.02em]",
         className
       )}
