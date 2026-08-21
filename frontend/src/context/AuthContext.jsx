@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const AuthContext = createContext(null);
 const API_URL = 'http://127.0.0.1:5000/api';
@@ -16,6 +16,14 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('finexo_token') || null);
   const [savedData, setSavedData] = useState({});
   const [loading, setLoading] = useState(true);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    setSavedData({});
+    localStorage.removeItem('finexo_user');
+    localStorage.removeItem('finexo_token');
+  }, []);
 
   // Load user data on startup or token change
   const fetchUserData = useCallback(async (authToken) => {
@@ -42,7 +50,7 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, logout]);
 
   useEffect(() => {
     if (token) {
@@ -90,14 +98,6 @@ export function AuthProvider({ children }) {
     localStorage.setItem('finexo_token', json.token);
     await fetchUserData(json.token);
     return json.user;
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    setSavedData({});
-    localStorage.removeItem('finexo_user');
-    localStorage.removeItem('finexo_token');
   };
 
   const saveEngineData = async (engineId, data) => {

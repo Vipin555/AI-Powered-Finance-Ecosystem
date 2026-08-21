@@ -124,7 +124,9 @@ function DecryptTextBase({
   const playedRef = React.useRef(false);
   const runRef = React.useRef(0);
   const onDecryptedRef = React.useRef(onDecrypted);
-  onDecryptedRef.current = onDecrypted;
+  React.useEffect(() => {
+    onDecryptedRef.current = onDecrypted;
+  }, [onDecrypted]);
 
   const uid = React.useId().replace(/[^a-zA-Z0-9]/g, "");
   const scope = `mk-dt-${uid}`;

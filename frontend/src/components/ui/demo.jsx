@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { DecryptText } from "./decrypt-text";
 
 export default function DecryptTextDemo() {
