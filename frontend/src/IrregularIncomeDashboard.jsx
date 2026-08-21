@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './irregular.css';
+import './engine-dashboard.css';
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -648,282 +649,312 @@ export default function IrregularIncomeDashboard() {
 
       {/* ═══════════════════ RESULTS ═══════════════════ */}
       {submitted && !loading && result && (
-        <div className="irr2-results-wrapper">
+        <div className="eng-dash">
+          {/* Sticky Header Nav */}
+          <header className="eng-nav">
+            <Link to="/" className="eng-nav-brand">
+              <div className="eng-nav-icon">🛡️</div>
+              FINEXO · <span>Cashflow & Emergency Buffer Intelligence</span>
+            </Link>
+            <div className="eng-nav-right">
+              {user && (
+                <span style={{ fontSize: '0.8rem', color: '#818cf8', fontWeight: 600, background: 'rgba(99,102,241,0.12)', padding: '0.35rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(99,102,241,0.25)' }}>
+                  👤 {user.name}
+                </span>
+              )}
+              <button className="eng-btn-ghost" onClick={handleReset}>
+                ← Re-Analyse
+              </button>
+              <button className="eng-btn-primary" onClick={() => window.print()}>
+                Export Plan 📄
+              </button>
+            </div>
+          </header>
 
-          {/* ── Hero Summary ── */}
-          <div className="irr2-hero">
-            <div className="irr2-hero-left">
-              <div className="irr2-hero-badge">
-                {selectedCategory?.icon} {selectedCategory?.label}
+          <main className="eng-dash-body">
+            {/* Top Heading */}
+            <div className="eng-dash-header-row dash-anim-1">
+              <div className="eng-dash-title-wrap">
+                <h1>Variable Income Stabilization & Emergency Runway Cockpit</h1>
+                <p>{selectedCategory?.icon} {selectedCategory?.label} Track · {result.sample_months} Months Telemetry · Adaptive 2-Tier Cashflow Split</p>
               </div>
-              <h2 className="irr2-hero-title">Your Income Plan is Ready</h2>
-              <p className="irr2-hero-sub">
-                Based on {result.sample_months} months of data &nbsp;|&nbsp;
-                Average income: <strong style={{ color: '#a78bfa' }}>₹{fmt(result.mean_monthly_income)}/month</strong>
-              </p>
-            </div>
-            <div className="irr2-hero-right">
-              <div className="irr2-stability-badge" style={{ color: stabilityWord(result.stability_score).color }}>
-                <div className="irr2-stability-num">{(result.stability_score * 100).toFixed(0)}%</div>
-                <div className="irr2-stability-lbl">Income Stability</div>
-                <div className="irr2-stability-word">{stabilityWord(result.stability_score).word}</div>
+              <div className="eng-dash-actions">
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: stabilityWord(result.stability_score).color, background: 'rgba(255,255,255,0.04)', padding: '0.4rem 0.9rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  ISS Stability: {(result.stability_score * 100).toFixed(0)}% ({stabilityWord(result.stability_score).word})
+                </span>
               </div>
             </div>
-          </div>
 
-          {/* ── 4 Quick-Glance Numbers ── */}
-          <div className="irr2-kpi-strip">
-            <div className="irr2-kpi">
-              <div className="irr2-kpi-icon">📈</div>
-              <div className="irr2-kpi-val" style={{ color: '#60a5fa' }}>₹{fmt(result.mean_monthly_income)}</div>
-              <div className="irr2-kpi-lbl">Average Monthly Income</div>
-            </div>
-            <div className="irr2-kpi">
-              <div className="irr2-kpi-icon">📉</div>
-              <div className="irr2-kpi-val" style={{ color: '#f87171' }}>₹{fmt(Math.max(0, result.shock_analysis?.shock_floor_2sigma ?? 0))}</div>
-              <div className="irr2-kpi-lbl">Worst-Case Month (Estimate)</div>
-            </div>
-            <div className="irr2-kpi">
-              <div className="irr2-kpi-icon">💰</div>
-              <div className="irr2-kpi-val" style={{ color: result.adaptive_strategy?.savings_capacity_per_month >= 0 ? '#34d399' : '#f87171' }}>
-                ₹{fmt(Math.max(0, result.adaptive_strategy?.savings_capacity_per_month ?? 0))}
-              </div>
-              <div className="irr2-kpi-lbl">You Can Save / Month</div>
-            </div>
-            <div className="irr2-kpi">
-              <div className="irr2-kpi-icon">🛡</div>
-              <div className="irr2-kpi-val" style={{ color: result.emergency_fund?.gap > 0 ? '#f59e0b' : '#34d399' }}>
-                {result.emergency_fund?.gap > 0 ? `₹${fmt(result.emergency_fund.gap)} needed` : '✅ Covered'}
-              </div>
-              <div className="irr2-kpi-lbl">Emergency Fund Gap</div>
-            </div>
-          </div>
-
-          <div className="irr2-results-grid">
-
-            {/* ── LEFT COLUMN ── */}
-            <div className="irr2-col">
-
-              {/* How steady is your income? */}
-              <ResultSection icon="📊" title="How Steady Is Your Income?">
-                <div className="irr2-income-chart-wrap">
-                  <MiniBarChart values={historyVals} threshold={totalFixed} />
-                  <div className="irr2-chart-legend">
-                    <span style={{ color: '#6366f1' }}>■ Good months</span>
-                    <span style={{ color: '#dc2626' }}>■ Tight months (below bills)</span>
-                    {totalFixed > 0 && <span style={{ color: '#f59e0b' }}>— Your monthly bills line</span>}
-                  </div>
+            {/* ── ROW 1: 4 KPI Cards ── */}
+            <div className="kpi-row-4 dash-anim-1">
+              {/* Card 1: Average Monthly Income */}
+              <div className="kpi-card">
+                <div className="kpi-top">
+                  <span className="kpi-label">AVERAGE MONTHLY INCOME</span>
+                  <span className="kpi-badge info">{result.sample_months} Mo Baseline</span>
                 </div>
-                <div className="irr2-income-stats">
-                  <div className="irr2-stat-chip">
-                    <span className="irr2-chip-label">Lowest month</span>
-                    <span className="irr2-chip-val red">₹{fmt(Math.min(...historyVals))}</span>
-                  </div>
-                  <div className="irr2-stat-chip">
-                    <span className="irr2-chip-label">Average month</span>
-                    <span className="irr2-chip-val blue">₹{fmt(result.mean_monthly_income)}</span>
-                  </div>
-                  <div className="irr2-stat-chip">
-                    <span className="irr2-chip-label">Highest month</span>
-                    <span className="irr2-chip-val green">₹{fmt(Math.max(...historyVals))}</span>
-                  </div>
+                <div className="kpi-value blue">₹{fmt(result.mean_monthly_income)}</div>
+                <div className="kpi-footer">
+                  <span className="kpi-trend-text">Worst Month Floor: ₹{fmt(Math.max(0, result.shock_analysis?.shock_floor_2sigma ?? 0))}</span>
+                  <span className="kpi-sub-desc">Historical revenue range across cycles</span>
                 </div>
+              </div>
 
-                {result.shock_analysis?.bad_months_count > 0 ? (
-                  <TipBox icon="⚠️" title="Heads Up" color="#f59e0b">
-                    In <strong>{result.shock_analysis.bad_months_count} out of {result.sample_months} months</strong>, your income was less than your bills (₹{fmt(totalFixed)}).
-                    That means you dipped into savings those months — which is why building an emergency fund first is critical.
-                  </TipBox>
-                ) : (
-                  <TipBox icon="✅" title="Great News" color="#34d399">
-                    In all {result.sample_months} months, your income stayed above your monthly bills. You're in a stable position — now let's put that surplus to work!
-                  </TipBox>
-                )}
-              </ResultSection>
+              {/* Card 2: Stability Score */}
+              <div className="kpi-card">
+                <div className="kpi-top">
+                  <span className="kpi-label">INCOME STABILITY SCORE (ISS)</span>
+                  <span className="kpi-badge up">{stabilityWord(result.stability_score).word}</span>
+                </div>
+                <div className="kpi-value green">{(result.stability_score * 100).toFixed(0)}%</div>
+                <div className="kpi-footer">
+                  <span className="kpi-trend-text">Volatility Index: {((1 - result.stability_score) * 10).toFixed(1)}/10</span>
+                  <span className="kpi-sub-desc">Lower variance allows higher growth SIP</span>
+                </div>
+              </div>
 
-              {/* Emergency Fund */}
-              <ResultSection icon="🛡️" title="Your Emergency Fund">
-                <div className="irr2-ef-visual">
+              {/* Card 3: Monthly Savings Capacity */}
+              <div className="kpi-card">
+                <div className="kpi-top">
+                  <span className="kpi-label">SURPLUS SAVINGS CAPACITY</span>
+                  <span className={`kpi-badge ${result.adaptive_strategy?.savings_capacity_per_month >= 0 ? 'up' : 'down'}`}>
+                    {result.adaptive_strategy?.base_savings_rate_pct ?? 25}% of Income
+                  </span>
+                </div>
+                <div className={`kpi-value ${result.adaptive_strategy?.savings_capacity_per_month >= 0 ? 'green' : 'red'}`}>
+                  ₹{fmt(Math.max(0, result.adaptive_strategy?.savings_capacity_per_month ?? 0))}/mo
+                </div>
+                <div className="kpi-footer">
+                  <span className="kpi-trend-text">After ₹{fmt(totalFixed)} Fixed Commitments</span>
+                  <span className="kpi-sub-desc">Investable capital in normal months</span>
+                </div>
+              </div>
+
+              {/* Card 4: Emergency Fund Gap */}
+              <div className="kpi-card">
+                <div className="kpi-top">
+                  <span className="kpi-label">EMERGENCY BUFFER RUNWAY</span>
+                  <span className={`kpi-badge ${result.emergency_fund?.gap > 0 ? 'warn' : 'up'}`}>
+                    {result.emergency_fund?.cushion_months} Mo Target
+                  </span>
+                </div>
+                <div className={`kpi-value ${result.emergency_fund?.gap > 0 ? 'yellow' : 'green'}`}>
+                  {result.emergency_fund?.gap > 0 ? `₹${fmt(result.emergency_fund.gap)} Gap` : '✅ Fully Covered'}
+                </div>
+                <div className="kpi-footer">
+                  <span className="kpi-trend-text">Holding: ₹{fmt(result.emergency_fund?.current_amount || 0)} / ₹{fmt(result.emergency_fund?.recommended_amount || 0)}</span>
+                  <span className="kpi-sub-desc">Vital protection against lean client months</span>
+                </div>
+              </div>
+            </div>
+
+            {/* ── ROW 2: Seasonal Forward Forecast + Adaptive Savings Split ── */}
+            <div className="dash-grid-2 dash-anim-2">
+              {/* Left: 6-Month Forward Income Forecast */}
+              <div className="dash-card">
+                <div className="dash-card-head">
                   <div>
-                    <div className="irr2-ef-row">
-                      <span>You need (for safety)</span>
-                      <strong style={{ color: '#34d399' }}>₹{fmt(result.emergency_fund.recommended_amount)}</strong>
-                    </div>
-                    <div className="irr2-ef-row">
-                      <span>You currently have</span>
-                      <strong style={{ color: '#60a5fa' }}>₹{fmt(result.emergency_fund.current_amount)}</strong>
-                    </div>
-                    {result.emergency_fund.gap > 0 && (
-                      <div className="irr2-ef-row">
-                        <span>Still need to save</span>
-                        <strong style={{ color: '#f87171' }}>₹{fmt(result.emergency_fund.gap)}</strong>
-                      </div>
-                    )}
+                    <h3 className="dash-card-title">6-Month Forward Income & Seasonal Forecast</h3>
+                    <p className="dash-card-desc">Predictive trend analysis with fixed expense commitments line</p>
                   </div>
-                  <div className="irr2-ef-meter">
-                    <div
-                      className="irr2-ef-fill"
-                      style={{
-                        height: `${Math.min(100, (result.emergency_fund.current_amount / result.emergency_fund.recommended_amount) * 100)}%`,
-                        background: result.emergency_fund.status === 'Adequate'
-                          ? 'linear-gradient(0deg, #10b981, #34d399)'
-                          : 'linear-gradient(0deg, #f59e0b, #fbbf24)',
-                      }}
-                    />
-                    <div className="irr2-ef-meter-label">
-                      {Math.min(100, Math.round((result.emergency_fund.current_amount / result.emergency_fund.recommended_amount) * 100))}%
+                  <span style={{ fontSize: '0.74rem', color: '#818cf8', fontWeight: 700, background: 'rgba(99,102,241,0.1)', padding: '3px 8px', borderRadius: '5px' }}>
+                    Forward Simulation
+                  </span>
+                </div>
+
+                <div className="chart-container-card">
+                  <svg viewBox="0 0 560 180" className="chart-svg">
+                    <defs>
+                      <linearGradient id="irrGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#6366f1" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+                    {[0.25, 0.5, 0.75, 1.0].map(f => (
+                      <line key={f} x1="30" y1={20 + f * 140} x2="530" y2={20 + f * 140} stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
+                    ))}
+                    {/* Fixed Commitments Baseline */}
+                    {(() => {
+                      const fc = result.income_forecast || [];
+                      const maxVal = Math.max(...fc.map(f => f.forecasted_income), totalFixed * 1.3, 1);
+                      const baseLineY = 160 - (totalFixed / maxVal) * 140;
+                      return (
+                        <g>
+                          <line x1="30" y1={baseLineY} x2="530" y2={baseLineY} stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="5 3" />
+                          <text x="525" y={baseLineY - 4} textAnchor="end" fill="#f59e0b" fontSize="9">Fixed Bills: ₹{fmt(totalFixed)}</text>
+                        </g>
+                      );
+                    })()}
+                    {/* Forecasted Curve */}
+                    {(() => {
+                      const fc = result.income_forecast || [];
+                      if (fc.length === 0) return null;
+                      const maxVal = Math.max(...fc.map(f => f.forecasted_income), totalFixed * 1.3, 1);
+                      const pts = fc.map((f, i) => ({
+                        x: 40 + (i / (fc.length - 1)) * 480,
+                        y: 160 - (f.forecasted_income / maxVal) * 140,
+                        month: MONTH_NAMES[f.calendar_month - 1],
+                        val: f.forecasted_income,
+                        peak: f.is_seasonal_peak,
+                      }));
+                      const dLine = pts.reduce((acc, p, idx) => (idx === 0 ? `M ${p.x} ${p.y}` : `${acc} L ${p.x} ${p.y}`), '');
+                      const dArea = `${dLine} L ${pts[pts.length - 1].x} 160 L ${pts[0].x} 160 Z`;
+                      return (
+                        <>
+                          <path d={dArea} fill="url(#irrGrad)" />
+                          <path d={dLine} fill="none" stroke="#818cf8" strokeWidth="3" strokeLinecap="round" />
+                          {pts.map((p, idx) => (
+                            <g key={idx}>
+                              <circle cx={p.x} cy={p.y} r={p.peak ? '6' : '4'} fill={p.peak ? '#f59e0b' : '#818cf8'} stroke="#080a11" strokeWidth="2" />
+                              <text x={p.x} y="176" textAnchor="middle" fill="#94a3b8" fontSize="9">{p.month}</text>
+                              <text x={p.x} y={p.y - 10} textAnchor="middle" fill={p.peak ? '#f59e0b' : '#cbd5e1'} fontSize="8" fontWeight="bold">
+                                ₹{Math.round(p.val / 1000)}k
+                              </text>
+                            </g>
+                          ))}
+                        </>
+                      );
+                    })()}
+                  </svg>
+                </div>
+              </div>
+
+              {/* Right: Adaptive 2-Bucket Savings Split */}
+              <div className="dash-card">
+                <div className="dash-card-head">
+                  <div>
+                    <h3 className="dash-card-title">Adaptive 2-Bucket Cashflow Split</h3>
+                    <p className="dash-card-desc">Separates safe liquid reserves from long-term compounding SIP</p>
+                  </div>
+                  <span style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 700, background: 'rgba(16,185,129,0.1)', padding: '3px 8px', borderRadius: '5px' }}>
+                    Dynamic Buffer
+                  </span>
+                </div>
+
+                <div className="donut-breakdown-row" style={{ marginTop: '0.8rem' }}>
+                  {/* Visual Split Donut */}
+                  <div className="donut-svg-wrap">
+                    <svg width="160" height="160" viewBox="0 0 160 160">
+                      {(() => {
+                        const safeVal = result.adaptive_strategy?.conservative_allocation_Rs || 5000;
+                        const growVal = result.adaptive_strategy?.growth_allocation_Rs || 15000;
+                        const total = safeVal + growVal || 1;
+                        const safePct = safeVal / total;
+                        const angle = safePct * 360;
+                        const r = 65, cx = 80, cy = 80, innerR = 45;
+                        const toRad = (a) => (a * Math.PI) / 180;
+                        const x1 = cx + r * Math.cos(toRad(0));
+                        const y1 = cy + r * Math.sin(toRad(0));
+                        const x2 = cx + r * Math.cos(toRad(angle));
+                        const y2 = cy + r * Math.sin(toRad(angle));
+                        const ix1 = cx + innerR * Math.cos(toRad(0));
+                        const iy1 = cy + innerR * Math.sin(toRad(0));
+                        const ix2 = cx + innerR * Math.cos(toRad(angle));
+                        const iy2 = cy + innerR * Math.sin(toRad(angle));
+                        const large = angle > 180 ? 1 : 0;
+                        const d1 = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${innerR} ${innerR} 0 ${large} 0 ${ix1} ${iy1} Z`;
+                        const d2 = `M ${x2} ${y2} A ${r} ${r} 0 ${large ? 0 : 1} 1 ${x1} ${y1} L ${ix1} ${iy1} A ${innerR} ${innerR} 0 ${large ? 0 : 1} 0 ${ix2} ${iy2} Z`;
+                        return (
+                          <>
+                            <path d={d1} fill="#38bdf8" />
+                            <path d={d2} fill="#10b981" />
+                          </>
+                        );
+                      })()}
+                    </svg>
+                    <div className="donut-svg-center">
+                      <span className="donut-svg-center-val" style={{ fontSize: '1rem', color: '#34d399' }}>₹{fmt(result.adaptive_strategy?.savings_capacity_per_month ?? 0)}</span>
+                      <span className="donut-svg-center-lbl">Surplus/mo</span>
+                    </div>
+                  </div>
+
+                  {/* Legend List */}
+                  <div className="donut-legend-list">
+                    <div className="donut-legend-row">
+                      <div className="donut-legend-left">
+                        <span className="donut-legend-dot" style={{ background: '#38bdf8' }} />
+                        <span>Safe Bucket (Liquid / FD)</span>
+                      </div>
+                      <div className="donut-legend-right">
+                        <span className="donut-legend-val">₹{fmt(result.adaptive_strategy?.conservative_allocation_Rs ?? 0)}</span>
+                        <span className="donut-legend-pct">Easy Access</span>
+                      </div>
+                    </div>
+                    <div className="donut-legend-row">
+                      <div className="donut-legend-left">
+                        <span className="donut-legend-dot" style={{ background: '#10b981' }} />
+                        <span>Growth Bucket (SIP / MF)</span>
+                      </div>
+                      <div className="donut-legend-right">
+                        <span className="donut-legend-val">₹{fmt(result.adaptive_strategy?.growth_allocation_Rs ?? 0)}</span>
+                        <span className="donut-legend-pct">Long Term</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-
-                {result.emergency_fund.status === 'Adequate' ? (
-                  <TipBox icon="✅" title="Emergency Fund: Covered!" color="#34d399">
-                    You have enough emergency savings to cover {result.emergency_fund.cushion_months} months of expenses — perfect for variable earners. You can now focus on growing your investments!
-                  </TipBox>
-                ) : (
-                  <TipBox icon="🎯" title={`Build your safety net first — ${result.emergency_fund.months_to_fill} months to go`} color="#f59e0b">
-                    As a variable earner, you need <strong>{result.emergency_fund.cushion_months} months</strong> of expenses (₹{fmt(result.emergency_fund.recommended_amount)}) as backup.
-                    Priority #1: Set aside a small amount each month until this is filled. Even ₹500 a week helps!
-                  </TipBox>
-                )}
-              </ResultSection>
-
+              </div>
             </div>
 
-            {/* ── RIGHT COLUMN ── */}
-            <div className="irr2-col">
+            {/* ── ROW 3: Safe Spending Tiers + AI Risk Advisory ── */}
+            <div className="dash-grid-2 dash-anim-3">
+              {/* Left: Safe Monthly Spending Ceiling */}
+              <div className="dash-card">
+                <div className="dash-card-head">
+                  <div>
+                    <h3 className="dash-card-title">Safe Monthly Spending Thresholds</h3>
+                    <p className="dash-card-desc">Statistical guardrails to prevent dipping into debt</p>
+                  </div>
+                </div>
 
-              {/* How Much You Can Save & Invest */}
-              <ResultSection icon="💰" title="How Much Can You Save &amp; Invest?">
-                {result.adaptive_strategy?.savings_capacity_per_month > 0 ? (
-                  <>
-                    <div className="irr2-savings-visual">
-                      <div className="irr2-savings-donut-wrap">
-                        <div className="irr2-savings-number">
-                          ₹{fmt(result.adaptive_strategy.savings_capacity_per_month)}
-                          <span>/mo</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.7rem', marginTop: '0.8rem' }}>
+                  <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.2)', borderRadius: '10px', padding: '0.8rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>🔒 Ultra-Safe</div>
+                    <strong style={{ color: '#38bdf8', fontSize: '1rem', display: 'block', marginTop: '4px' }}>
+                      ₹{fmt(result.safe_spending?.ultra_safe_spending || 0)}
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b' }}>During low-revenue dips</span>
+                  </div>
+                  <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '10px', padding: '0.8rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>✅ Safe Ceiling</div>
+                    <strong style={{ color: '#34d399', fontSize: '1rem', display: 'block', marginTop: '4px' }}>
+                      ₹{fmt(result.safe_spending?.safe_monthly_spending || 0)}
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Normal months limit</span>
+                  </div>
+                  <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '10px', padding: '0.8rem', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>📊 Discretionary</div>
+                    <strong style={{ color: '#f59e0b', fontSize: '1rem', display: 'block', marginTop: '4px' }}>
+                      ₹{fmt(result.safe_spending?.discretionary_budget_avg || 0)}
+                    </strong>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b' }}>Leisure & flex spending</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: AI Contingency Advisory */}
+              <div className="dash-card">
+                <div className="dash-card-head">
+                  <div>
+                    <h3 className="dash-card-title">AI Contingency Intelligence & Directives</h3>
+                    <p className="dash-card-desc">Personalized rulebook for irregular revenue earners</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.8rem' }}>
+                  {(result.ai_advisory || []).slice(0, 3).map((tip, i) => (
+                    <div key={i} className="suggestion-item-v2" style={{ padding: '0.75rem' }}>
+                      <div className="sug-v2-main">
+                        <span className="sug-v2-icon">{i === 0 ? '🛡️' : i === 1 ? '📈' : '⚡'}</span>
+                        <div className="sug-v2-info">
+                          <p className="sug-v2-detail" style={{ fontSize: '0.8rem', color: '#e2e8f0', lineHeight: 1.4 }}>{tip}</p>
                         </div>
-                        <div className="irr2-savings-sublabel">Average Surplus</div>
-                      </div>
-                      <div className="irr2-savings-split">
-                        <div className="irr2-split-item safe">
-                          <div className="irr2-split-label">🏦 Keep it Safe (FD / Liquid Fund)</div>
-                          <div className="irr2-split-amount">₹{fmt(result.adaptive_strategy.conservative_allocation_Rs)}</div>
-                          <div className="irr2-split-why">For unstable months — easy to withdraw</div>
-                        </div>
-                        <div className="irr2-split-item grow">
-                          <div className="irr2-split-label">📈 Grow it (SIP / Mutual Fund)</div>
-                          <div className="irr2-split-amount">₹{fmt(result.adaptive_strategy.growth_allocation_Rs)}</div>
-                          <div className="irr2-split-why">Long-term wealth building</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <TipBox icon="💡" title="How this split works" color="#818cf8">
-                      Because your income varies month to month, we split your savings in two:
-                      a <strong>safe bucket</strong> (FD or liquid fund — you can withdraw anytime) and a
-                      <strong> growth bucket</strong> (SIP or mutual fund — stays invested for the long run).
-                      In good months, top up both. In tight months, skip the growth bucket first.
-                    </TipBox>
-
-                    <div className="irr2-rates-row">
-                      <div className="irr2-rate-chip">
-                        <span>Savings Rate</span>
-                        <strong style={{ color: '#34d399' }}>{result.adaptive_strategy.base_savings_rate_pct}%</strong>
-                      </div>
-                      <div className="irr2-rate-chip">
-                        <span>Emergency Priority</span>
-                        <strong style={{ color: '#f59e0b' }}>{result.adaptive_strategy.ef_priority_fraction_pct}%</strong>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <TipBox icon="⚠️" title="Your expenses are covering all your income" color="#f87171">
-                    Right now your monthly bills (₹{fmt(totalFixed)}) are equal to or more than your average income (₹{fmt(result.mean_monthly_income)}).
-                    Focus on reducing one fixed expense, or increasing income, before starting investments.
-                    Even a ₹2,000 saving on expenses = ₹2,000 freed for your future.
-                  </TipBox>
-                )}
-              </ResultSection>
-
-              {/* Next 6 Months Forecast */}
-              <ResultSection icon="📅" title="What to Expect Next 6 Months">
-                <p className="irr2-forecast-note">
-                  Based on your past income trend, here's a rough estimate for the coming months.
-                  Use this to plan your spending — not as a guarantee!
-                </p>
-                <div className="irr2-forecast-cards">
-                  {result.income_forecast?.map((f, i) => (
-                    <div key={i} className={`irr2-fc-card ${f.is_seasonal_peak ? 'peak' : ''}`}>
-                      <div className="irr2-fc-month">
-                        {MONTH_NAMES[f.calendar_month - 1]}
-                        {f.is_seasonal_peak && <span className="irr2-fc-peak">🌟 Peak</span>}
-                      </div>
-                      <div className="irr2-fc-amount">₹{fmt(f.forecasted_income)}</div>
-                      <div className={`irr2-fc-vs ${f.forecasted_income >= totalFixed ? 'ok' : 'low'}`}>
-                        {f.forecasted_income >= totalFixed
-                          ? `+₹${fmt(f.forecasted_income - totalFixed)} surplus`
-                          : `⚠ ₹${fmt(totalFixed - f.forecasted_income)} short`}
                       </div>
                     </div>
                   ))}
                 </div>
-              </ResultSection>
-
-              {/* Safe Monthly Spending */}
-              {result.safe_spending && (
-                <ResultSection icon="💸" title="Safe Amount to Spend Each Month">
-                  <p className="irr2-forecast-note">
-                    This is the maximum you can spend each month without risking going into debt,
-                    even if next month's income is lower than usual.
-                  </p>
-                  <div className="irr2-safe-spending-blocks">
-                    <div className="irr2-ss-block ultra">
-                      <div className="irr2-ss-label">🔒 Ultra-Safe (most conservative)</div>
-                      <div className="irr2-ss-value">₹{fmt(result.safe_spending.ultra_safe_spending)}/month</div>
-                    </div>
-                    <div className="irr2-ss-block safe">
-                      <div className="irr2-ss-label">✅ Safe Ceiling</div>
-                      <div className="irr2-ss-value">₹{fmt(result.safe_spending.safe_monthly_spending)}/month</div>
-                    </div>
-                    <div className="irr2-ss-block avg">
-                      <div className="irr2-ss-label">📊 Average Budget</div>
-                      <div className="irr2-ss-value">₹{fmt(result.safe_spending.discretionary_budget_avg)}/month</div>
-                    </div>
-                  </div>
-                  <TipBox icon="💡" title="What these mean" color="#60a5fa">
-                    <strong>Ultra-Safe:</strong> spend this if you want maximum security. <br />
-                    <strong>Safe Ceiling:</strong> spend up to this without worry most months. <br />
-                    <strong>Average Budget:</strong> what you can typically afford on a normal month.
-                  </TipBox>
-                </ResultSection>
-              )}
-            </div>
-
-          </div>
-
-          {/* ── Full-width AI Tips ── */}
-          {result.ai_advisory?.length > 0 && (
-            <div className="irr2-advisory-section">
-              <div className="irr2-advisory-title">🤖 Personalised Tips Just for You</div>
-              <div className="irr2-advisory-grid">
-                {result.ai_advisory.map((tip, i) => (
-                  <div key={i} className="irr2-advisory-tip">
-                    <span className="irr2-tip-num">{i + 1}</span>
-                    <span>{tip}</span>
-                  </div>
-                ))}
               </div>
             </div>
-          )}
-
-          {/* ── Start Over ── */}
-          <div className="irr2-footer-actions">
-            <button className="irr2-reset-btn large" onClick={handleReset}>
-              🔄 Analyse Again with Different Numbers
-            </button>
-          </div>
-
+          </main>
         </div>
       )}
     </div>

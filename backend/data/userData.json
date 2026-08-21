@@ -100,7 +100,7 @@
       "salary_growth_rate": 10,
       "business_growth_rate": 15,
       "inflation_rate": 6,
-      "updatedAt": "2026-08-20T16:29:49.779Z"
+      "updatedAt": "2026-08-21T03:51:57.804Z"
     },
     "simulator": {
       "goals": [
@@ -128,7 +128,7 @@
         "emergency_coverage": 4.5,
         "age": 32
       },
-      "updatedAt": "2026-08-20T16:34:05.547Z"
+      "updatedAt": "2026-08-21T03:47:50.546Z"
     },
     "irregular_income": {
       "income_history": [
@@ -151,7 +151,7 @@
       "current_emergency_fund": 150000,
       "seasonal_months": null,
       "historyInput": "75000, 120000, 45000, 95000, 140000, 60000, 110000, 85000, 130000, 50000, 105000, 90000",
-      "updatedAt": "2026-08-20T16:36:39.326Z"
+      "updatedAt": "2026-08-21T03:53:00.457Z"
     },
     "portfolio": {
       "assetInputs": {
@@ -198,7 +198,7 @@
       "incomeStability": 0.7,
       "goalProximityYears": 10,
       "targetWealth": "",
-      "updatedAt": "2026-08-20T16:38:08.560Z"
+      "updatedAt": "2026-08-21T03:50:36.892Z"
     }
   }
 }

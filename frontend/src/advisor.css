@@ -246,26 +246,186 @@ html, body { height: 100%; }
 }
 .progress-line.filled { background: var(--text); }
 
-/* Form Card */
-/* Cockpit Layout */
-.adv-cockpit-grid {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 1.8rem;
-  width: 100%;
-  max-width: 960px;
-  align-items: start;
+/* ─── Premium Poker-Card Input System ────────────────────────────────────────*/
+@keyframes card-enter {
+  from { opacity: 0; transform: translateY(28px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes card-exit {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-18px) scale(0.97); }
 }
 
-.form-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 2.2rem 2.5rem;
+.adv-poker-card {
+  position: relative;
   width: 100%;
-  transition: opacity 0.2s, transform 0.2s;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4);
+  max-width: 780px;
+  background: rgba(8, 9, 18, 0.92);
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  border-radius: 24px;
+  padding: 2.8rem 3rem;
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.08),
+    0 32px 80px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
 }
+
+.card-enter { animation: card-enter 0.38s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+.card-exit  { animation: card-exit  0.22s ease-in forwards; }
+
+/* Ambient neon glow that follows the card */
+.poker-card-glow {
+  pointer-events: none;
+  position: absolute;
+  top: -80px; left: 50%;
+  transform: translateX(-50%);
+  width: 480px; height: 220px;
+  background: radial-gradient(ellipse, rgba(99, 102, 241, 0.18) 0%, transparent 70%);
+  border-radius: 50%;
+  z-index: 0;
+}
+
+/* Card Header */
+.poker-card-header {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: 2.4rem;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.poker-card-icon-wrap {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(99,102,241,0.08));
+  border: 1px solid rgba(99,102,241,0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+  flex-shrink: 0;
+}
+
+.poker-card-icon { line-height: 1; }
+
+.poker-card-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff 30%, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.poker-card-step {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.poker-card-corner-badge {
+  margin-left: auto;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: rgba(99, 102, 241, 0.8);
+  line-height: 1;
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  border-radius: 12px;
+  padding: 0.3rem 0.7rem;
+  background: rgba(99, 102, 241, 0.07);
+}
+.poker-card-corner-badge span {
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+/* Fields Grid — 2-col on wide, 1-col on mobile */
+.poker-fields-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.2rem;
+}
+
+/* Each field is its own mini-card */
+.poker-field-card {
+  background: rgba(255, 255, 255, 0.026);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 1.2rem 1.3rem;
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+}
+
+.poker-field-card:hover {
+  border-color: rgba(99, 102, 241, 0.35);
+  box-shadow: 0 0 24px rgba(99, 102, 241, 0.1);
+  transform: translateY(-1px);
+}
+
+.poker-field-card:focus-within {
+  border-color: rgba(99, 102, 241, 0.55);
+  box-shadow: 0 0 32px rgba(99, 102, 241, 0.18), inset 0 0 0 1px rgba(99,102,241,0.12);
+}
+
+.pf-card-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+}
+
+.pf-card-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.pf-card-live-val {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 1px 9px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+
+.pf-slider-row {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Card footer actions */
+.poker-card-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2.2rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 680px) {
+  .poker-fields-grid { grid-template-columns: 1fr; }
+  .adv-poker-card { padding: 1.6rem 1.4rem; }
+}
+
+
 
 .form-field-cockpit {
   display: flex;

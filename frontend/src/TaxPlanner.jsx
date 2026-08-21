@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './tax.css';
+import './engine-dashboard.css';
 
 const fmt = (n) => Math.round(n).toLocaleString('en-IN');
 const pct = (n) => `${Number(n).toFixed(2)}%`;
@@ -301,7 +302,7 @@ export default function TaxPlanner() {
   if (result) {
     const r = result;
     const isNew = r.recommended_regime === 'New Regime' || r.recommended_regime === 'New';
-    const regimeColor = isNew ? '#4caf8e' : '#f26622';
+    const regimeColor = isNew ? '#10b981' : '#6366f1';
     const finalTax = isNew ? r.final_tax?.new_regime : r.final_tax?.old_regime;
     const otherTax = isNew ? r.final_tax?.old_regime : r.final_tax?.new_regime;
     const ded = r.deductions || {};
@@ -310,63 +311,115 @@ export default function TaxPlanner() {
     const proj = r.future_projection || {};
 
     return (
-      <div className="tax-page">
-        <header className="tax-header">
-          <div className="tax-logo"><div className="tax-logo-icon">F</div>FINEXO · <span>AI Tax Planner</span></div>
-          <button className="tax-back-btn" onClick={reset}>← Re-analyse</button>
+      <div className="eng-dash">
+        {/* Sticky Header Nav */}
+        <header className="eng-nav">
+          <Link to="/" className="eng-nav-brand">
+            <div className="eng-nav-icon">🧾</div>
+            FINEXO · <span>AI Tax Intelligence & Regime Engine</span>
+          </Link>
+          <div className="eng-nav-right">
+            {user && (
+              <span style={{ fontSize: '0.8rem', color: '#818cf8', fontWeight: 600, background: 'rgba(99,102,241,0.12)', padding: '0.35rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(99,102,241,0.25)' }}>
+                👤 {user.name}
+              </span>
+            )}
+            <button className="eng-btn-ghost" onClick={reset}>
+              ← Re-Analyse
+            </button>
+            <button className="eng-btn-primary" onClick={() => window.print()}>
+              Export Tax Plan 📄
+            </button>
+          </div>
         </header>
 
-        <div className="tax-dashboard">
-
-          {/* Summary Strip */}
-          <div className="tax-strip">
-            <div className="strip-item">
-              <span className="strip-lbl">Gross Total Income</span>
-              <span className="strip-val">₹{fmt(gti.total_gross_income)}</span>
+        <main className="eng-dash-body">
+          {/* Top Heading */}
+          <div className="eng-dash-header-row dash-anim-1">
+            <div className="eng-dash-title-wrap">
+              <h1>Tax Optimization & Statutory Regime Cockpit</h1>
+              <p>FY 2024-25 (AY 2025-26) · Income Tax Act Framework × AI 80C/80D/NPS Allocation Matrix</p>
             </div>
-            <div className="strip-item">
-              <span className="strip-lbl">Deductions (Old Regime)</span>
-              <span className="strip-val">−₹{fmt(ded.total_deductions_old)}</span>
-            </div>
-            <div className="strip-item">
-              <span className="strip-lbl">Taxable (Old)</span>
-              <span className="strip-val">₹{fmt(r.taxable_income?.old_regime)}</span>
-            </div>
-            <div className="strip-item">
-              <span className="strip-lbl">Taxable (New)</span>
-              <span className="strip-val">₹{fmt(r.taxable_income?.new_regime)}</span>
-            </div>
-            <div className="strip-item">
-              <span className="strip-lbl">Recommended Regime</span>
-              <span className="strip-val" style={{ color: regimeColor }}>{r.recommended_regime}</span>
+            <div className="eng-dash-actions">
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#34d399', background: 'rgba(16,185,129,0.12)', padding: '0.4rem 0.9rem', borderRadius: '8px', border: '1px solid rgba(16,185,129,0.25)' }}>
+                ✨ {isNew ? 'New Regime Optimal' : 'Old Regime Optimal'} (Save ₹{fmt(r.savings_differential)})
+              </span>
             </div>
           </div>
 
-          {/* Tax Verdict */}
-          <div className="tax-card verdict-hero" style={{ borderLeft: `6px solid ${regimeColor}` }}>
-            <div className="verdict-icon">📜</div>
-            <div className="verdict-content">
-              <h3 className="verdict-title">
-                {isNew ? '✅ New Regime is Better for You' : '💡 Old Regime Saves More Tax'}
-              </h3>
-              <p className="verdict-text">
-                You save <strong style={{ color: '#4caf8e' }}>₹{fmt(r.savings_differential)}</strong> per year by choosing <strong>{r.recommended_regime}</strong>.
-                Your final tax liability is <strong style={{ color: regimeColor }}>₹{fmt(finalTax)}</strong> vs ₹{fmt(otherTax)} in the other regime.
-                {isNew
-                  ? ' Clean, simple — no lock-ins or paperwork required.'
-                  : ` Your deductions of ₹${fmt(ded.total_deductions_old)} make Old Regime highly efficient.`}
-              </p>
+          {/* ── ROW 1: 4 Top KPI Cards ── */}
+          <div className="kpi-row-4 dash-anim-1">
+            {/* Card 1: Gross Total Income */}
+            <div className="kpi-card">
+              <div className="kpi-top">
+                <span className="kpi-label">GROSS TOTAL INCOME (GTI)</span>
+                <span className="kpi-badge info">Step 1 Total</span>
+              </div>
+              <div className="kpi-value blue">₹{fmt(gti.total_gross_income)}</div>
+              <div className="kpi-footer">
+                <span className="kpi-trend-text">Salary + Business + Rental + Gains</span>
+                <span className="kpi-sub-desc">Taxable baseline before chapter VI-A deductions</span>
+              </div>
+            </div>
+
+            {/* Card 2: Recommended Regime */}
+            <div className="kpi-card">
+              <div className="kpi-top">
+                <span className="kpi-label">RECOMMENDED REGIME</span>
+                <span className="kpi-badge up">Save ₹{fmt(r.savings_differential)}</span>
+              </div>
+              <div className="kpi-value green">{r.recommended_regime}</div>
+              <div className="kpi-footer">
+                <span className="kpi-trend-text">Optimal Statutory Route</span>
+                <span className="kpi-sub-desc">{isNew ? 'Simplified rates without lock-in' : `Maximizing ₹${fmt(ded.total_deductions_old)} deductions`}</span>
+              </div>
+            </div>
+
+            {/* Card 3: Final Tax Payable */}
+            <div className="kpi-card">
+              <div className="kpi-top">
+                <span className="kpi-label">TOTAL TAX PAYABLE</span>
+                <span className="kpi-badge down">Eff. {pct(isNew ? r.effective_rate?.new_regime : r.effective_rate?.old_regime)}</span>
+              </div>
+              <div className="kpi-value" style={{ color: '#f59e0b' }}>₹{fmt(finalTax)}</div>
+              <div className="kpi-footer">
+                <span className="kpi-trend-text">Includes 4% Health & Edu Cess</span>
+                <span className="kpi-sub-desc">vs ₹{fmt(otherTax)} in alternative regime</span>
+              </div>
+            </div>
+
+            {/* Card 4: Deductions Claimed */}
+            <div className="kpi-card">
+              <div className="kpi-top">
+                <span className="kpi-label">TOTAL DEDUCTIONS CLAIMED</span>
+                <span className="kpi-badge info">VI-A Applied</span>
+              </div>
+              <div className="kpi-value purple">₹{fmt(isNew ? ded.standard_deduction_new : ded.total_deductions_old)}</div>
+              <div className="kpi-footer">
+                <span className="kpi-trend-text">Sec 80C + 80D + NPS + HRA</span>
+                <span className="kpi-sub-desc">Reduced taxable base significantly</span>
+              </div>
             </div>
           </div>
 
-          {/* Old vs New Comparison + Slab Breakdown */}
-          <div className="tax-row tax-row-2">
-            <div className="tax-card">
-              <h3 className="tax-sec-title">⚖️ Old vs New Regime Comparison</h3>
-              <div className="tax-compare-wrap">
+          {/* ── ROW 2: Regime Comparison + Slab Breakdown ── */}
+          <div className="dash-grid-2 dash-anim-2">
+            {/* Left: Old vs New Regime Comparison */}
+            <div className="dash-card">
+              <div className="dash-card-head">
+                <div>
+                  <h3 className="dash-card-title">Old vs New Regime Comparative Evaluation</h3>
+                  <p className="dash-card-desc">Full statutory side-by-side calculation under Finance Act 2024</p>
+                </div>
+                <span style={{ fontSize: '0.74rem', color: '#10b981', fontWeight: 700, background: 'rgba(16,185,129,0.1)', padding: '3px 8px', borderRadius: '5px' }}>
+                  Save ₹{fmt(r.savings_differential)}/yr
+                </span>
+              </div>
+
+              <div className="tax-compare-wrap" style={{ margin: '1rem 0' }}>
                 <div className={`regime-box ${!isNew ? 'winner' : ''}`}>
                   <div className="regime-label">Old Regime</div>
-                  <div className="regime-amount" style={{ color: !isNew ? '#4caf8e' : '#ef4444' }}>
+                  <div className="regime-amount" style={{ color: !isNew ? '#34d399' : '#f87171' }}>
                     ₹{fmt(r.final_tax?.old_regime)}
                   </div>
                   <div className="regime-eff">Eff. rate: {pct(r.effective_rate?.old_regime)}</div>
@@ -378,7 +431,7 @@ export default function TaxPlanner() {
                 </div>
                 <div className={`regime-box ${isNew ? 'winner' : ''}`}>
                   <div className="regime-label">New Regime</div>
-                  <div className="regime-amount" style={{ color: isNew ? '#4caf8e' : '#ef4444' }}>
+                  <div className="regime-amount" style={{ color: isNew ? '#34d399' : '#f87171' }}>
                     ₹{fmt(r.final_tax?.new_regime)}
                   </div>
                   <div className="regime-eff">Eff. rate: {pct(r.effective_rate?.new_regime)}</div>
@@ -386,13 +439,13 @@ export default function TaxPlanner() {
                 </div>
               </div>
 
-              {/* Tax composition breakdown */}
+              {/* Tax Composition */}
               <div className="tax-composition">
                 {[
-                  { label: 'Slab Tax', old: r.final_tax?.old_regime - (r.surcharge?.old_regime||0) - (r.cess_4pct?.old_regime||0), new: r.final_tax?.new_regime - (r.surcharge?.new_regime||0) - (r.cess_4pct?.new_regime||0) },
+                  { label: 'Basic Slab Tax', old: r.final_tax?.old_regime - (r.surcharge?.old_regime||0) - (r.cess_4pct?.old_regime||0), new: r.final_tax?.new_regime - (r.surcharge?.new_regime||0) - (r.cess_4pct?.new_regime||0) },
                   { label: 'Capital Gains Tax', old: cg.total_cg_tax, new: cg.total_cg_tax },
                   { label: 'Surcharge', old: r.surcharge?.old_regime, new: r.surcharge?.new_regime },
-                  { label: '4% Cess', old: r.cess_4pct?.old_regime, new: r.cess_4pct?.new_regime },
+                  { label: '4% Health & Edu Cess', old: r.cess_4pct?.old_regime, new: r.cess_4pct?.new_regime },
                 ].filter(i => (i.old || 0) + (i.new || 0) > 0).map((item, i) => (
                   <div key={i} className="comp-row">
                     <span className="comp-label">{item.label}</span>
@@ -403,184 +456,105 @@ export default function TaxPlanner() {
               </div>
             </div>
 
-            <div className="tax-card">
-              <h3 className="tax-sec-title">📊 Slab Breakdown ({r.recommended_regime})</h3>
-              <SlabChart
-                slabs={isNew ? r.slab_tax?.new_regime_slabs : r.slab_tax?.old_regime_slabs}
-                totalTax={finalTax || 1}
-              />
-              <p className="tax-note" style={{ marginTop: '1rem' }}>
-                Includes 4% cess (₹{fmt(isNew ? r.cess_4pct?.new_regime : r.cess_4pct?.old_regime)}).&nbsp;
-                Net payable: <strong style={{ color: '#f26622' }}>₹{fmt(finalTax)}</strong>
-              </p>
-            </div>
-          </div>
-
-          {/* GTI Waterfall */}
-          <div className="tax-card tax-full">
-            <h3 className="tax-sec-title">📥 GTI Computation — Step 1</h3>
-            <p className="tax-note" style={{ marginBottom: '1rem' }}>GTI = Salary + Business + Rental (after 30% std ded.) + Interest + Debt CG</p>
-            <GTIWaterfall gti={gti} />
-          </div>
-
-          {/* Deduction Breakdown */}
-          <div className="tax-card tax-full">
-            <h3 className="tax-sec-title">🎯 Deduction Application — Step 2</h3>
-            <div className="deduction-grid">
-              <DeductionMeter label="Sec 80C (ELSS/PPF/LIC/EPF)" used={ded.section_80c || 0} cap={150000} color="#f26622" />
-              <DeductionMeter label="NPS — 80CCD(1B)" used={ded.section_80ccd_nps || 0} cap={50000} color="#4c9af2" />
-              <DeductionMeter label="Health Insurance — 80D" used={ded.section_80d || 0} cap={parseInt(formData.age) >= 60 ? 50000 : 25000} color="#4caf8e" />
-              <DeductionMeter label="Home Loan Interest — Sec 24(b)" used={ded.home_loan_interest_24b || 0} cap={200000} color="#f59e0b" />
-            </div>
-            <div className="breakdown-table" style={{ marginTop: '1.5rem' }}>
-              {[
-                ['Standard Deduction (Old)', ded.standard_deduction_old],
-                ['Standard Deduction (New)', ded.standard_deduction_new],
-                ['Section 80C', ded.section_80c],
-                ['Section 80CCD(1B) NPS', ded.section_80ccd_nps],
-                ['Section 80D Health Insurance', ded.section_80d],
-                ['HRA Exemption', ded.hra_exemption],
-                ['Home Loan Interest 24(b)', ded.home_loan_interest_24b],
-                ['Education Loan 80E', ded.education_loan_interest],
-              ].filter(([, v]) => v > 0).map(([label, val]) => (
-                <div key={label} className="breakdown-row">
-                  <span className="br-label">{label}</span>
-                  <span className="br-val" style={{ color: '#4caf8e' }}>−₹{fmt(val)}</span>
-                </div>
-              ))}
-              <div className="breakdown-row total-row">
-                <span className="br-label">Total Deductions (Old Regime)</span>
-                <span className="br-val" style={{ color: '#f26622' }}>−₹{fmt(ded.total_deductions_old)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Capital Gains (if any) */}
-          {cg.total_cg_tax > 0 && (
-            <div className="tax-card tax-full">
-              <h3 className="tax-sec-title">📈 Capital Gains Tax — Separately Computed</h3>
-              <div className="cg-grid">
-                {[
-                  { label: 'Equity STCG', rate: '20%', amount: cg.equity_stcg?.amount, tax: cg.equity_stcg?.tax, color: '#ef4444' },
-                  { label: 'Equity LTCG (over ₹1.25L exempt)', rate: '12.5%', amount: cg.equity_ltcg?.amount, tax: cg.equity_ltcg?.tax, color: '#f59e0b' },
-                  { label: 'Debt STCG/LTCG', rate: 'Slab Rate', amount: cg.debt_stcg_ltcg?.amount, tax: 'In slab', color: '#4c9af2' },
-                ].filter(i => i.amount > 0).map((item, i) => (
-                  <div key={i} className="cg-row">
-                    <div className="cg-label" style={{ color: item.color }}>{item.label}</div>
-                    <div className="cg-meta">
-                      <span>₹{fmt(item.amount)} × {item.rate}</span>
-                      <strong>= ₹{typeof item.tax === 'number' ? fmt(item.tax) : item.tax}</strong>
-                    </div>
-                  </div>
-                ))}
-                <div className="cg-total">
-                  <span>Total Capital Gains Tax</span>
-                  <strong style={{ color: '#f26622' }}>₹{fmt(cg.total_cg_tax)}</strong>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* AI Tax Portfolio Allocation (Layer 3) */}
-          {r.optimal_tax_allocation && (
-            <div className="tax-card tax-full" style={{ border: '1px solid var(--accent)', background: 'rgba(242, 102, 34, 0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+            {/* Right: Slab Breakdown */}
+            <div className="dash-card">
+              <div className="dash-card-head">
                 <div>
-                  <h3 className="tax-sec-title" style={{ margin: 0, color: 'var(--accent)' }}>🤖 AI Optimal Tax Portfolio</h3>
-                  <p className="tax-note" style={{ margin: '0.2rem 0 0 0' }}>Based on a budget of ₹{fmt(formData.tax_saving_budget || 150000)} and {formData.risk_profile || 'Moderate'} risk profile.</p>
+                  <h3 className="dash-card-title">Tax Slab Breakdown ({r.recommended_regime})</h3>
+                  <p className="dash-card-desc">Marginal progressive tax calculation across slabs</p>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>Estimated Tax Saved</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#4caf8e' }}>₹{fmt(r.optimal_tax_allocation.estimated_tax_saved)}</div>
-                </div>
+                <span style={{ fontSize: '0.74rem', color: '#818cf8', fontWeight: 700, background: 'rgba(99,102,241,0.1)', padding: '3px 8px', borderRadius: '5px' }}>
+                  Progressive Tax Slabs
+                </span>
               </div>
-              
-              <div className="alloc-bar-wrap" style={{ marginBottom: '1.5rem' }}>
-                <div className="alloc-bar-track">
-                  <div className="alloc-fill" style={{ width: `${(r.optimal_tax_allocation.elss / Math.max(1, r.optimal_tax_allocation.total_allocated)) * 100}%`, background: '#f26622' }} title="ELSS" />
-                  <div className="alloc-fill" style={{ width: `${(r.optimal_tax_allocation.ppf / Math.max(1, r.optimal_tax_allocation.total_allocated)) * 100}%`, background: '#4c9af2' }} title="PPF" />
-                  <div className="alloc-fill" style={{ width: `${(r.optimal_tax_allocation.nps / Math.max(1, r.optimal_tax_allocation.total_allocated)) * 100}%`, background: '#f59e0b' }} title="NPS" />
-                  <div className="alloc-fill" style={{ width: `${(r.optimal_tax_allocation.health_insurance / Math.max(1, r.optimal_tax_allocation.total_allocated)) * 100}%`, background: '#4caf8e' }} title="Health" />
-                </div>
-                <div className="alloc-legend">
-                  <div className="alloc-dot-item"><span style={{ color: '#f26622' }}>●</span> ELSS: ₹{fmt(r.optimal_tax_allocation.elss)}</div>
-                  <div className="alloc-dot-item"><span style={{ color: '#4c9af2' }}>●</span> PPF: ₹{fmt(r.optimal_tax_allocation.ppf)}</div>
-                  <div className="alloc-dot-item"><span style={{ color: '#f59e0b' }}>●</span> NPS: ₹{fmt(r.optimal_tax_allocation.nps)}</div>
-                  <div className="alloc-dot-item"><span style={{ color: '#4caf8e' }}>●</span> Health (80D): ₹{fmt(r.optimal_tax_allocation.health_insurance)}</div>
-                </div>
+
+              <div style={{ marginTop: '1rem' }}>
+                <SlabChart
+                  slabs={isNew ? r.slab_tax?.new_regime_slabs : r.slab_tax?.old_regime_slabs}
+                  totalTax={finalTax || 1}
+                />
+              </div>
+
+              <div style={{ marginTop: '1.2rem', padding: '0.9rem', background: 'rgba(255,255,255,0.025)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>Total Payable (including ₹{fmt(isNew ? r.cess_4pct?.new_regime : r.cess_4pct?.old_regime)} Cess):</span>
+                <strong style={{ fontSize: '1.15rem', color: '#f59e0b', fontFamily: 'Outfit, sans-serif' }}>₹{fmt(finalTax)}</strong>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Deduction Capacity + Suggestions */}
-          <div className="tax-row tax-row-2">
-            <div className="tax-card">
-              <h3 className="tax-sec-title">💡 Tax-Saving Opportunities</h3>
-              {!r.tax_saving_suggestions || r.tax_saving_suggestions.length === 0
-                ? <p className="tax-note" style={{ color: '#4caf8e' }}>✅ All major deduction sections are fully utilised!</p>
-                : r.tax_saving_suggestions.map((s, i) => (
-                  <div key={i} className="suggestion-item-v2">
-                    <div className="sug-v2-main">
-                      <span className="sug-v2-icon">{s.icon}</span>
-                      <div className="sug-v2-info">
-                        <p className="sug-v2-label">{s.label} <span className="sug-section-tag">{s.section}</span></p>
-                        <p className="sug-v2-detail">{s.detail}</p>
+          {/* ── ROW 3: Deductions & Opportunities ── */}
+          <div className="dash-grid-2 dash-anim-3">
+            {/* Left: Deductions Matrix */}
+            <div className="dash-card">
+              <div className="dash-card-head">
+                <div>
+                  <h3 className="dash-card-title">Deduction & Exemption Matrix</h3>
+                  <p className="dash-card-desc">Chapter VI-A utilization and statutory limit headroom</p>
+                </div>
+              </div>
+
+              <div className="deduction-grid" style={{ marginTop: '0.6rem' }}>
+                <DeductionMeter label="Sec 80C (ELSS/PPF/LIC/EPF)" used={ded.section_80c || 0} cap={150000} color="#6366f1" />
+                <DeductionMeter label="NPS — 80CCD(1B)" used={ded.section_80ccd_nps || 0} cap={50000} color="#38bdf8" />
+                <DeductionMeter label="Health Insurance — 80D" used={ded.section_80d || 0} cap={parseInt(formData.age) >= 60 ? 50000 : 25000} color="#10b981" />
+                <DeductionMeter label="Home Loan Interest — Sec 24(b)" used={ded.home_loan_interest_24b || 0} cap={200000} color="#f59e0b" />
+              </div>
+            </div>
+
+            {/* Right: AI Tax-Saving Opportunities & Next Year Forecast */}
+            <div className="dash-card">
+              <div className="dash-card-head">
+                <div>
+                  <h3 className="dash-card-title">AI Tax Optimization & Next Year Forecast</h3>
+                  <p className="dash-card-desc">Actionable strategies to reduce liabilities and next FY projection</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1rem' }}>
+                <div className="insight-metric-tile">
+                  <div className="insight-tile-label"><span>📈</span> Next FY Projected Income</div>
+                  <div className="insight-tile-val" style={{ color: '#60a5fa', fontSize: '1.15rem' }}>
+                    ₹{fmt(proj.future_total_income || 0)}
+                  </div>
+                  <div className="insight-tile-sub">Assuming +{formData.salary_growth_rate || 10}% growth</div>
+                </div>
+                <div className="insight-metric-tile">
+                  <div className="insight-tile-label"><span>🔮</span> Better Regime Next FY</div>
+                  <div className="insight-tile-val" style={{ color: '#34d399', fontSize: '1.15rem' }}>
+                    {proj.future_tax_new_regime < proj.future_tax_old_regime ? 'New Regime' : 'Old Regime'}
+                  </div>
+                  <div className="insight-tile-sub">Est. Tax: ₹{fmt(Math.min(proj.future_tax_old_regime || 0, proj.future_tax_new_regime || 0))}</div>
+                </div>
+              </div>
+
+              {/* Suggestions */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {!r.tax_saving_suggestions || r.tax_saving_suggestions.length === 0 ? (
+                  <p style={{ color: '#34d399', fontSize: '0.84rem' }}>✅ All major deduction sections are fully utilised!</p>
+                ) : (
+                  r.tax_saving_suggestions.slice(0, 3).map((s, i) => (
+                    <div key={i} className="suggestion-item-v2" style={{ padding: '0.7rem' }}>
+                      <div className="sug-v2-main">
+                        <span className="sug-v2-icon">{s.icon}</span>
+                        <div className="sug-v2-info">
+                          <p className="sug-v2-label" style={{ fontSize: '0.82rem' }}>{s.label} <span className="sug-section-tag">{s.section}</span></p>
+                          <p className="sug-v2-detail" style={{ fontSize: '0.74rem' }}>{s.detail}</p>
+                        </div>
+                      </div>
+                      <div className="sug-v2-action">
+                        <span className="sug-v2-benefit" style={{ fontSize: '0.8rem' }}>Save ₹{fmt(s.tax_saved)}/yr</span>
                       </div>
                     </div>
-                    <div className="sug-v2-action">
-                      <span className="sug-v2-benefit">Save ₹{fmt(s.tax_saved)}/yr</span>
-                      {s.deduction_available > 0 && <span className="sug-deduction">Deduction: ₹{fmt(s.deduction_available)}</span>}
-                    </div>
-                  </div>
-                ))}
-            </div>
-
-            <div className="tax-card">
-              <h3 className="tax-sec-title">🤖 ML Tax Forecast (Next Year)</h3>
-              <p className="tax-note" style={{ margin: '-0.4rem 0 1rem 0' }}>Using linear regression based on {formData.salary_growth_rate || 10}% salary growth, {formData.business_growth_rate || 15}% business growth, and {formData.inflation_rate || 6}% inflation.</p>
-              <div className="projection-grid">
-                <div className="proj-item">
-                  <span className="proj-lbl">Projected Income</span>
-                  <span className="proj-val">₹{fmt(proj.future_total_income)}</span>
-                </div>
-                <div className="proj-item">
-                  <span className="proj-lbl">Tax — Old Regime</span>
-                  <span className="proj-val" style={{ color: proj.future_tax_old_regime <= proj.future_tax_new_regime ? '#4caf8e' : '#ef4444' }}>
-                    ₹{fmt(proj.future_tax_old_regime)}
-                  </span>
-                </div>
-                <div className="proj-item">
-                  <span className="proj-lbl">Tax — New Regime</span>
-                  <span className="proj-val" style={{ color: proj.future_tax_new_regime <= proj.future_tax_old_regime ? '#4caf8e' : '#ef4444' }}>
-                    ₹{fmt(proj.future_tax_new_regime)}
-                  </span>
-                </div>
-                <div className="proj-item">
-                  <span className="proj-lbl">Better Next Year</span>
-                  <span className="proj-val" style={{ color: '#f26622' }}>
-                    {proj.future_tax_new_regime < proj.future_tax_old_regime ? 'New' : 'Old'} Regime
-                  </span>
-                </div>
-              </div>
-              <div className="unused-caps">
-                <p className="tax-sec-title" style={{ fontSize: '0.8rem', marginBottom: '0.6rem' }}>Deduction Gap Analysis</p>
-                {Object.entries(r.deduction_gap_analysis || {}).filter(([,v]) => v > 0).map(([k, v]) => (
-                  <div key={k} className="unused-row">
-                    <span>{k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
-                    <span style={{ color: '#f59e0b' }}>₹{fmt(v)} gap</span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
-
-        </div>
-        <footer className="tax-footer">
-          <p>Backend Tax Engine: FY 2024-25 (AY 2025-26) · GTI → Deductions → Slab Tax + CG Tax + Surcharge + 4% Cess</p>
-        </footer>
+        </main>
       </div>
     );
   }
+
 
   // ── Form ────────────────────────────────────────────────────────────────────
   const cur = STEPS[step];
@@ -676,149 +650,94 @@ export default function TaxPlanner() {
           ))}
         </div>
 
-        {/* Cockpit Container */}
-        <div className="tax-cockpit-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.8rem', width: '100%', maxWidth: '980px', alignItems: 'start' }}>
-          <div className={`form-card ${animating ? 'fade-out' : 'fade-in'}`}>
-            <div className="form-card-icon">{cur.icon}</div>
-            <h2 className="form-card-title">{cur.title}</h2>
-            <p className="form-card-sub">Step {step + 1} of {STEPS.length} · Interactive Tax Cockpit</p>
+        {/* Premium Poker-Card Input */}
+        <div className={`adv-poker-card ${animating ? 'card-exit' : 'card-enter'}`} style={{ borderColor: 'rgba(245, 158, 11, 0.22)' }}>
+          <div className="poker-card-glow" style={{ background: 'radial-gradient(ellipse, rgba(245,158,11,0.14) 0%, transparent 70%)' }} />
 
-            <div className="form-fields">
-              {cur.fields.map(field => {
-                const val = Number(formData[field.key]) || 0;
-                return (
-                  <div key={field.key} className="form-field-cockpit" style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '12px', padding: '1.1rem 1.25rem', marginBottom: '1.1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <label className="field-label" style={{ fontWeight: 600, color: '#e2e8f0', fontSize: '0.86rem' }}>
-                        {field.label}
-                        {field.optional && <span className="optional-tag" style={{ fontSize: '0.72rem', color: '#64748b' }}> (optional)</span>}
-                      </label>
-                      {field.type !== 'select' && (
-                        <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.88rem', fontWeight: 800, color: '#f59e0b', background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '2px 10px', borderRadius: '100px' }}>
-                          {field.unit === '₹' 
-                            ? val >= 100000 
-                              ? `₹${(val / 100000).toFixed(2)} Lakhs` 
-                              : `₹${val.toLocaleString('en-IN')}`
-                            : `${val}${field.unit}`}
-                        </span>
-                      )}
-                    </div>
-
-                    {field.type === 'select' ? (
-                      <select className="field-select" value={formData[field.key] || field.options[0]}
-                        onChange={e => handleChange(field.key, e.target.value)}
-                        style={{ background: 'rgba(0, 0, 0, 0.4)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '0.75rem 0.9rem', color: '#fff', fontSize: '0.88rem', outline: 'none' }}>
-                        {field.options.map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    ) : (
-                      <>
-                        <div className="field-input-wrap">
-                          <span className="field-unit">{field.unit}</span>
-                          <input type="number" min="0" className="field-input" placeholder={field.placeholder}
-                            value={formData[field.key] ?? ''}
-                            onChange={e => handleChange(field.key, e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && nextStep()} />
-                        </div>
-
-                        {field.min !== undefined && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                            <input
-                              type="range"
-                              min={field.min}
-                              max={field.max}
-                              step={field.step}
-                              value={val}
-                              onChange={e => handleChange(field.key, e.target.value)}
-                              className="adv-range-slider"
-                              style={{ accentColor: '#f59e0b' }}
-                            />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>
-                              <span>{field.unit === '₹' ? `₹${(field.min/1000).toFixed(0)}k` : `${field.min}`}</span>
-                              <span>{field.unit === '₹' ? `₹${(field.max/100000).toFixed(0)}L` : `${field.max}`}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Max Cap Button Chips */}
-                        {field.maxCap && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '4px' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleChange(field.key, field.maxCap)}
-                              style={{ background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#f59e0b', fontSize: '0.72rem', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit' }}
-                            >
-                              ⚡ Max Out Limit (₹{(field.maxCap / 1000).toFixed(0)}k)
-                            </button>
-                          </div>
-                        )}
-                      </>
-                    )}
-                    <p className="field-hint">{field.hint}</p>
-                  </div>
-                );
-              })}
+          <div className="poker-card-header">
+            <div className="poker-card-icon-wrap" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.25), rgba(245,158,11,0.06))', border: '1px solid rgba(245,158,11,0.3)', boxShadow: '0 0 20px rgba(245,158,11,0.25)' }}>
+              <span className="poker-card-icon">{cur.icon}</span>
             </div>
-
-            <div className="form-actions">
-              {step > 0 && <button className="btn-secondary" onClick={prevStep}>← Back</button>}
-              <button className={`btn-primary ${!isStepValid() ? 'disabled' : ''}`} onClick={nextStep} disabled={!isStepValid()}>
-                {step === STEPS.length - 1 ? '🧾 Compute My Tax' : 'Next →'}
-              </button>
+            <div>
+              <h2 className="poker-card-title" style={{ background: 'linear-gradient(135deg, #fff 30%, #fbbf24)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{cur.title}</h2>
+              <p className="poker-card-step">Step {step + 1} / {STEPS.length} · Tax Cockpit</p>
+            </div>
+            <div className="poker-card-corner-badge" style={{ color: 'rgba(245,158,11,0.85)', borderColor: 'rgba(245,158,11,0.25)', background: 'rgba(245,158,11,0.07)' }}>
+              {step + 1}<span>/{STEPS.length}</span>
             </div>
           </div>
 
-          {/* Live Tax Estimator Preview Widget */}
-          <div className="tax-live-preview-box" style={{ background: '#0d111a', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '16px', padding: '1.4rem', boxShadow: '0 12px 36px rgba(0, 0, 0, 0.5)', position: 'sticky', top: '90px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.2rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '0.75rem' }}>
-              <span className="live-dot pulse" style={{ background: '#f59e0b', boxShadow: '0 0 10px #f59e0b' }} />
-              <h3 style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.92rem', fontWeight: 700, color: '#fff' }}>Live Tax Estimator</h3>
-            </div>
-
-            {(() => {
-              const sal = Number(formData.salary_income) || 0;
-              const biz = Number(formData.business_income) || 0;
-              const rent = Number(formData.rental_income) || 0;
-              const totalGti = sal + biz + rent;
-
-              const c80c = Math.min(150000, Number(formData.c80c) || 0);
-              const nps = Math.min(50000, Number(formData.nps) || 0);
-              const c80d = Math.min(75000, Number(formData.c80d) || 0);
-              const hra = Number(formData.hra) || 0;
-              const totalDed = c80c + nps + c80d + hra + 50000; // Old regime deductions
-
-              // Rough live estimator for UI preview
-              const netOldTaxable = Math.max(0, totalGti - totalDed);
-              const netNewTaxable = Math.max(0, totalGti - 75000);
-
-              const estOldTax = netOldTaxable > 1500000 ? netOldTaxable * 0.20 : netOldTaxable > 700000 ? netOldTaxable * 0.12 : 0;
-              const estNewTax = netNewTaxable > 1500000 ? netNewTaxable * 0.15 : netNewTaxable > 700000 ? netNewTaxable * 0.08 : 0;
-              const diff = Math.abs(estOldTax - estNewTax);
-              const winner = estNewTax <= estOldTax ? 'New Regime' : 'Old Regime';
-
+          <div className="poker-fields-grid">
+            {cur.fields.map(field => {
+              const val = Number(formData[field.key]) || 0;
+              const formatted = field.type === 'select' ? null
+                : field.unit === '₹'
+                  ? val >= 100000 ? `₹${(val / 100000).toFixed(2)} L` : `₹${val.toLocaleString('en-IN')}`
+                  : `${val}${field.unit}`;
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '10px', padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase' }}>Gross Annual Income</span>
-                    <strong style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.2rem', color: '#fff' }}>₹{totalGti.toLocaleString('en-IN')}</strong>
+                <div key={field.key} className="poker-field-card" style={{ borderColor: 'rgba(245,158,11,0.08)' }}>
+                  <div className="pf-card-label-row">
+                    <span className="pf-card-label">
+                      {field.label}
+                      {field.optional && <span style={{ fontSize: '0.7rem', color: '#475569' }}> (opt)</span>}
+                    </span>
+                    {formatted && (
+                      <span className="pf-card-live-val" style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)', borderColor: 'rgba(245,158,11,0.2)' }}>
+                        {formatted}
+                      </span>
+                    )}
                   </div>
 
-                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '10px', padding: '0.8rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase' }}>Total Deductions Claimed</span>
-                    <strong style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.1rem', color: '#f59e0b' }}>₹{totalDed.toLocaleString('en-IN')}</strong>
-                  </div>
+                  {field.type === 'select' ? (
+                    <select className="field-select" value={formData[field.key] || field.options[0]}
+                      onChange={e => handleChange(field.key, e.target.value)}
+                      style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '0.7rem', color: '#fff', fontSize: '0.88rem', width: '100%', outline: 'none' }}>
+                      {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  ) : (
+                    <>
+                      <div className="field-input-wrap">
+                        <span className="field-unit">{field.unit}</span>
+                        <input type="number" min="0" className="field-input" placeholder={field.placeholder}
+                          value={formData[field.key] ?? ''}
+                          onChange={e => handleChange(field.key, e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && nextStep()} />
+                      </div>
 
-                  <div style={{ background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '10px', padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#34d399', textTransform: 'uppercase', fontWeight: 700 }}>Projected Best Tax Regime</span>
-                    <strong style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1.15rem', color: '#fff' }}>{winner}</strong>
-                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Est. Tax: ~₹{Math.min(estOldTax, estNewTax).toLocaleString('en-IN')}</span>
-                  </div>
+                      {field.min !== undefined && (
+                        <div className="pf-slider-row">
+                          <input type="range" min={field.min} max={field.max} step={field.step}
+                            value={val} onChange={e => handleChange(field.key, e.target.value)}
+                            className="adv-range-slider" style={{ accentColor: '#f59e0b' }} />
+                          <div className="slider-labels">
+                            <span>{field.unit === '₹' ? `₹${(field.min/1000).toFixed(0)}k` : field.min}</span>
+                            <span>{field.unit === '₹' ? `₹${(field.max/100000).toFixed(0)}L` : field.max}</span>
+                          </div>
+                        </div>
+                      )}
 
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', background: 'rgba(255, 255, 255, 0.03)', border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: '8px', padding: '0.6rem 0.8rem', lineHeight: '1.4' }}>
-                    💡 Slide salary and deduction sliders to see instantaneous updates in regime savings.
-                  </div>
+                      {field.maxCap && (
+                        <div style={{ marginTop: '6px' }}>
+                          <button type="button"
+                            onClick={() => handleChange(field.key, field.maxCap)}
+                            style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.28)', color: '#f59e0b', fontSize: '0.7rem', fontWeight: 700, padding: '3px 9px', borderRadius: '6px', cursor: 'pointer', fontFamily: 'inherit' }}>
+                            ⚡ Max Limit ₹{(field.maxCap/1000).toFixed(0)}k
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                  <p className="field-hint">{field.hint}</p>
                 </div>
               );
-            })()}
+            })}
+          </div>
+
+          <div className="poker-card-actions">
+            {step > 0 && <button className="btn-secondary" onClick={prevStep}>← Back</button>}
+            <button className={`btn-primary ${!isStepValid() ? 'disabled' : ''}`} onClick={nextStep} disabled={!isStepValid()}>
+              {step === STEPS.length - 1 ? '🧾 Compute My Tax' : 'Next →'}
+            </button>
           </div>
         </div>
       </div>
@@ -829,3 +748,5 @@ export default function TaxPlanner() {
     </div>
   );
 }
+
+

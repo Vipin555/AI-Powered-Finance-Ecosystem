@@ -897,177 +897,107 @@ export default function FinancialAdvisor() {
           ))}
         </div>
 
-        {/* Card & Live Cockpit Container */}
-        <div className="adv-cockpit-grid">
-          {/* Main Card */}
-          <div className={`form-card ${animating ? 'fade-out' : 'fade-in'}`}>
-            <div className="form-card-icon">{currentStep.icon}</div>
-            <h2 className="form-card-title">{currentStep.title}</h2>
-            <p className="form-card-sub">Step {step + 1} of {STEPS.length} · Interactive Input Cockpit</p>
+        {/* Premium Poker-Card Input */}
+        <div className={`adv-poker-card ${animating ? 'card-exit' : 'card-enter'}`}>
+          {/* Card Glow Border */}
+          <div className="poker-card-glow" />
 
-            <div className="form-fields">
-              {currentStep.fields.map((field) => {
-                const val = Number(formData[field.key]) || 0;
-                return (
-                  <div key={field.key} className="form-field-cockpit">
-                    <div className="field-header-row">
-                      <label className="field-label">{field.label}</label>
-                      <span className="field-live-badge">
-                        {field.unit === '₹' 
-                          ? val >= 10000000 
-                            ? `₹${(val / 10000000).toFixed(2)} Cr`
-                            : val >= 100000 
-                              ? `₹${(val / 100000).toFixed(2)} Lakhs`
-                              : `₹${val.toLocaleString('en-IN')}`
-                          : `${val} ${field.unit}`}
-                      </span>
-                    </div>
-
-                    <div className="field-input-wrap">
-                      <span className="field-unit">{field.unit}</span>
-                      <input
-                        id={field.key}
-                        type="number"
-                        className="field-input"
-                        placeholder={field.placeholder}
-                        value={formData[field.key] ?? ''}
-                        onChange={e => handleChange(field.key, e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && nextStep()}
-                        min="0"
-                      />
-                    </div>
-
-                    {/* Synchronized Range Slider */}
-                    {field.min !== undefined && (
-                      <div className="field-slider-wrap">
-                        <input
-                          type="range"
-                          min={field.min}
-                          max={field.max}
-                          step={field.step}
-                          value={val}
-                          onChange={e => handleChange(field.key, e.target.value)}
-                          className="adv-range-slider"
-                        />
-                        <div className="slider-labels">
-                          <span>{field.unit === '₹' ? `₹${(field.min/1000).toFixed(0)}k` : `${field.min}`}</span>
-                          <span>{field.unit === '₹' ? `₹${(field.max/100000).toFixed(0)}L` : `${field.max}`}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Quick Increment Chips */}
-                    {field.increments && (
-                      <div className="field-chip-row">
-                        <span className="chip-label">Quick Adjust:</span>
-                        {field.increments.map(inc => (
-                          <button
-                            key={inc}
-                            type="button"
-                            className="adv-chip-btn"
-                            onClick={() => handleChange(field.key, val + inc)}
-                          >
-                            +₹{(inc / 1000).toFixed(0)}k
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          className="adv-chip-btn reset-chip"
-                          onClick={() => handleChange(field.key, Math.max(0, val - 10000))}
-                        >
-                          -₹10k
-                        </button>
-                      </div>
-                    )}
-
-                    <p className="field-hint">{field.hint}</p>
-                  </div>
-                );
-              })}
+          {/* Card Header */}
+          <div className="poker-card-header">
+            <div className="poker-card-icon-wrap">
+              <span className="poker-card-icon">{currentStep.icon}</span>
             </div>
-
-            <div className="form-actions">
-              {step > 0 && (
-                <button className="btn-secondary" onClick={prevStep}>← Back</button>
-              )}
-              <button
-                className={`btn-primary ${!isStepValid() ? 'disabled' : ''}`}
-                onClick={nextStep}
-                disabled={!isStepValid()}
-              >
-                {step === STEPS.length - 1 ? '🚀 Generate My Report' : 'Next →'}
-              </button>
+            <div>
+              <h2 className="poker-card-title">{currentStep.title}</h2>
+              <p className="poker-card-step">Step {step + 1} / {STEPS.length}</p>
+            </div>
+            <div className="poker-card-corner-badge">
+              {step + 1}<span>/{STEPS.length}</span>
             </div>
           </div>
 
-          {/* Live Micro-Preview Cockpit Widget */}
-          <div className="adv-live-preview-box">
-            <div className="preview-header">
-              <span className="live-dot pulse" />
-              <h3>Live Micro-Analysis Preview</h3>
-            </div>
-
-            {(() => {
-              const inc = Number(formData.monthly_income) || 0;
-              const exp = Number(formData.monthly_expenses) || 0;
-              const emi = Number(formData.total_emis) || 0;
-              const outflows = exp + emi;
-              const surplus = Math.max(0, inc - outflows);
-              const savPct = inc > 0 ? Math.min(100, Math.round((surplus / inc) * 100)) : 0;
-              const dtiPct = inc > 0 ? Math.min(100, Math.round((emi / inc) * 100)) : 0;
-              const emgFund = Number(formData.emergency_fund) || 0;
-              const emgMonths = exp > 0 ? (emgFund / exp).toFixed(1) : '0';
-
+          {/* Fields Grid */}
+          <div className="poker-fields-grid">
+            {currentStep.fields.map((field) => {
+              const val = Number(formData[field.key]) || 0;
+              const formatted = field.unit === '₹'
+                ? val >= 10000000 ? `₹${(val / 10000000).toFixed(2)} Cr`
+                  : val >= 100000 ? `₹${(val / 100000).toFixed(2)} L`
+                  : `₹${val.toLocaleString('en-IN')}`
+                : `${val} ${field.unit}`;
               return (
-                <div className="preview-metrics">
-                  <div className="preview-card-item">
-                    <div className="preview-row-label">
-                      <span>Monthly Surplus Cashflow</span>
-                      <strong className={surplus > 0 ? 'text-green' : 'text-red'}>₹{surplus.toLocaleString('en-IN')}</strong>
-                    </div>
-                    <div className="preview-bar-track">
-                      <div className="preview-bar-fill green" style={{ width: `${savPct}%` }} />
-                    </div>
-                    <div className="preview-row-sub">
-                      <span>Savings Rate: <strong>{savPct}%</strong></span>
-                      <span>Target: <strong>20%+</strong></span>
-                    </div>
+                <div key={field.key} className="poker-field-card">
+                  <div className="pf-card-label-row">
+                    <span className="pf-card-label">{field.label}</span>
+                    <span className="pf-card-live-val">{formatted}</span>
                   </div>
 
-                  <div className="preview-card-item">
-                    <div className="preview-row-label">
-                      <span>Debt-to-Income (DTI Ratio)</span>
-                      <strong className={dtiPct <= 35 ? 'text-green' : dtiPct <= 50 ? 'text-yellow' : 'text-red'}>{dtiPct}%</strong>
-                    </div>
-                    <div className="preview-bar-track">
-                      <div className={`preview-bar-fill ${dtiPct <= 35 ? 'green' : dtiPct <= 50 ? 'yellow' : 'red'}`} style={{ width: `${dtiPct}%` }} />
-                    </div>
-                    <div className="preview-row-sub">
-                      <span>EMI Burden: <strong>₹{emi.toLocaleString('en-IN')}/mo</strong></span>
-                      <span>Safe Limit: <strong>&lt; 35%</strong></span>
-                    </div>
+                  <div className="field-input-wrap">
+                    <span className="field-unit">{field.unit}</span>
+                    <input
+                      id={field.key}
+                      type="number"
+                      className="field-input"
+                      placeholder={field.placeholder}
+                      value={formData[field.key] ?? ''}
+                      onChange={e => handleChange(field.key, e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && nextStep()}
+                      min="0"
+                    />
                   </div>
 
-                  <div className="preview-card-item">
-                    <div className="preview-row-label">
-                      <span>Emergency Safety Buffer</span>
-                      <strong className={Number(emgMonths) >= 6 ? 'text-green' : Number(emgMonths) >= 3 ? 'text-yellow' : 'text-red'}>{emgMonths} Mo</strong>
+                  {field.min !== undefined && (
+                    <div className="pf-slider-row">
+                      <input
+                        type="range"
+                        min={field.min}
+                        max={field.max}
+                        step={field.step}
+                        value={val}
+                        onChange={e => handleChange(field.key, e.target.value)}
+                        className="adv-range-slider"
+                      />
+                      <div className="slider-labels">
+                        <span>{field.unit === '₹' ? `₹${(field.min/1000).toFixed(0)}k` : field.min}</span>
+                        <span>{field.unit === '₹' ? `₹${(field.max/100000).toFixed(0)}L` : field.max}</span>
+                      </div>
                     </div>
-                    <div className="preview-bar-track">
-                      <div className={`preview-bar-fill ${Number(emgMonths) >= 6 ? 'green' : 'yellow'}`} style={{ width: `${Math.min(100, (Number(emgMonths) / 6) * 100)}%` }} />
-                    </div>
-                    <div className="preview-row-sub">
-                      <span>Fund: <strong>₹{emgFund.toLocaleString('en-IN')}</strong></span>
-                      <span>Target: <strong>6 Months</strong></span>
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="preview-tip-pill">
-                    💡 Adjust numbers above to see immediate cashflow impacts before running the AI model.
-                  </div>
+                  {field.increments && (
+                    <div className="field-chip-row">
+                      <span className="chip-label">Quick:</span>
+                      {field.increments.map(inc => (
+                        <button key={inc} type="button" className="adv-chip-btn"
+                          onClick={() => handleChange(field.key, val + inc)}>
+                          +₹{(inc/1000).toFixed(0)}k
+                        </button>
+                      ))}
+                      <button type="button" className="adv-chip-btn reset-chip"
+                        onClick={() => handleChange(field.key, Math.max(0, val - 10000))}>
+                        −₹10k
+                      </button>
+                    </div>
+                  )}
+
+                  <p className="field-hint">{field.hint}</p>
                 </div>
               );
-            })()}
+            })}
+          </div>
+
+          {/* Card Footer Actions */}
+          <div className="poker-card-actions">
+            {step > 0 && (
+              <button className="btn-secondary" onClick={prevStep}>← Back</button>
+            )}
+            <button
+              className={`btn-primary ${!isStepValid() ? 'disabled' : ''}`}
+              onClick={nextStep}
+              disabled={!isStepValid()}
+            >
+              {step === STEPS.length - 1 ? '🚀 Generate My Report' : 'Next →'}
+            </button>
           </div>
         </div>
       </div>
@@ -1078,3 +1008,4 @@ export default function FinancialAdvisor() {
     </div>
   );
 }
+

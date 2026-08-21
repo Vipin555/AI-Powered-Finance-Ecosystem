@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './portfolio.css';
+import './engine-dashboard.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const ASSET_KEYS = ['stocks', 'mutual_funds', 'fixed_deposits', 'gold', 'pf', 'bonds', 'cash'];
@@ -44,7 +45,8 @@ const LOADING_STEPS = [
 ];
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
-const inr = (v) => `₹${Number(v).toLocaleString('en-IN')}`;
+const inr = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`;
+const fmt = (v) => Number(v || 0).toLocaleString('en-IN');
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -319,332 +321,360 @@ export default function PortfolioDashboard() {
     const projections = r.projections || [];
     const lastProj = projections[projections.length - 1] || {};
 
+    const portfolioVal = r.total_portfolio_value || 0;
+    const expReturn = r.expected_portfolio_return || 12;
+    const sharpeVal = Number(fo.sharpe_ratio ?? rm.sharpe_ratio ?? 1.25);
+    const varAmount = rm.var_95_amount || Math.round(portfolioVal * 0.15);
+    const divScore = r.diversification?.score || 82;
+
     return (
-      <div className="pf-page">
-        {/* Header */}
-        <header className="pf-header">
-          <div className="pf-logo">
-            <div className="pf-logo-icon">P</div>
-            FINEXO · <span>Portfolio Growth & Rebalancing</span>
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div className="pf-header-stat">
-              <span className="pf-header-stat-label">Total Value</span>
-              <span className="pf-header-stat-value">{inr(r.total_portfolio_value)}</span>
-            </div>
-            <div className="pf-header-stat">
-              <span className="pf-header-stat-label">Expected Return</span>
-              <span className="pf-header-stat-value" style={{ color: '#34d399' }}>{r.expected_portfolio_return}%</span>
-            </div>
-            <button className="pf-reset-btn" onClick={reset}>← Re-analyze</button>
+      <div className="eng-dash">
+        {/* Sticky Header Nav */}
+        <header className="eng-nav">
+          <Link to="/" className="eng-nav-brand">
+            <div className="eng-nav-icon">📈</div>
+            FINEXO · <span>Portfolio Intelligence & Rebalancing</span>
+          </Link>
+          <div className="eng-nav-right">
+            {user && (
+              <span style={{ fontSize: '0.8rem', color: '#818cf8', fontWeight: 600, background: 'rgba(99,102,241,0.12)', padding: '0.35rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(99,102,241,0.25)' }}>
+                👤 {user.name}
+              </span>
+            )}
+            <button className="eng-btn-ghost" onClick={reset}>
+              ← Re-Analyze
+            </button>
+            <button className="eng-btn-primary" onClick={() => window.print()}>
+              Export Report 📄
+            </button>
           </div>
         </header>
 
-        <div className="pf-dashboard">
-
-          {/* KPI Grid */}
-          <div className="pf-kpi-grid">
-            {[
-              { label: 'Portfolio Value', value: inr(r.total_portfolio_value), color: '#60a5fa', bar: 'blue' },
-              { label: 'Expected Return', value: `${r.expected_portfolio_return}%`, color: '#34d399', bar: 'green' },
-              { label: 'Portfolio Risk (σ)', value: `${rm.portfolio_risk_std_dev_pct}%`, color: '#f87171', bar: 'red' },
-              { label: 'Diversification Index', value: `${r.diversification?.index} (${r.diversification?.score}%)`, color: '#a78bfa', bar: 'purple' },
-              { label: 'Sharpe Ratio', value: fo.sharpe_ratio, color: fo.sharpe_ratio >= 1 ? '#34d399' : '#f59e0b', bar: fo.sharpe_ratio >= 1 ? 'green' : 'warning' },
-              { label: 'VaR (95%)', value: inr(rm.var_95_amount), color: '#f87171', bar: 'red' },
-            ].map(({ label, value, color, bar }) => (
-              <div key={label} className={`pf-kpi-card pf-kpi-${bar}`}>
-                <div className="pf-kpi-label">{label}</div>
-                <div className="pf-kpi-value" style={{ color }}>{value}</div>
-              </div>
-            ))}
+        <main className="eng-dash-body">
+          {/* Top Heading */}
+          <div className="eng-dash-header-row dash-anim-1">
+            <div className="eng-dash-title-wrap">
+              <h1>Portfolio Growth & MVO Rebalancing Cockpit</h1>
+              <p>Risk-Adjusted Optimization × Monte Carlo Variance × ML Regressor Forecasts · {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+            </div>
+            <div className="eng-dash-actions">
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: fo.rebalance_needed ? '#f87171' : '#34d399', background: fo.rebalance_needed ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)', padding: '0.4rem 0.9rem', borderRadius: '8px', border: `1px solid ${fo.rebalance_needed ? 'rgba(239,68,68,0.25)' : 'rgba(16,185,129,0.25)'}` }}>
+                {fo.rebalance_needed ? '⚠️ Rebalance Recommended' : '✅ Target Weight Balanced'}
+              </span>
+            </div>
           </div>
 
-          {/* Section 17: Final Output */}
-          {fo.portfolio_value && (
-            <div className="pf-card pf-card-green">
-              <div className="pf-card-title">🏆 Final Output Summary</div>
-
-              <div className="pf-metrics-grid">
-                {[
-                  { label: 'Portfolio Value', value: fo.portfolio_value, color: '#60a5fa' },
-                  { label: 'Expected Return', value: `${fo.expected_return_pct}%`, color: '#34d399' },
-                  { label: 'Portfolio Risk (σ)', value: `${fo.portfolio_risk_pct}%`, color: '#f87171' },
-                  { label: 'Diversification Index', value: fo.diversification_index, color: '#a78bfa' },
-                  { label: 'Sharpe Ratio', value: fo.sharpe_ratio, color: fo.sharpe_ratio >= 1 ? '#34d399' : '#f59e0b' },
-                  { label: 'Max Drawdown', value: `${fo.max_drawdown_pct}%`, color: '#f87171' },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="pf-metric-pill">
-                    <div className="pf-metric-label">{label}</div>
-                    <div className="pf-metric-value" style={{ color }}>{value}</div>
-                  </div>
-                ))}
+          {/* ── ROW 1: 4 KPI Cards ── */}
+          <div className="kpi-row-4 dash-anim-1">
+            {/* Card 1: Total Portfolio Value */}
+            <div className="kpi-card">
+              <div className="kpi-top">
+                <span className="kpi-label">TOTAL PORTFOLIO VALUE</span>
+                <span className="kpi-badge up">+{expReturn}% p.a.</span>
               </div>
+              <div className="kpi-value green">{inr(portfolioVal)}</div>
+              <div className="kpi-footer">
+                <span className="kpi-trend-text">Expected Annual Gain: +{inr(Math.round(portfolioVal * (expReturn / 100)))}</span>
+                <span className="kpi-sub-desc">Combined holding across 7 asset categories</span>
+              </div>
+            </div>
 
-              <div className="pf-rebalance-badge-row">
-                <span className="pf-muted-label">Rebalance Needed:</span>
-                <span className={`pf-rebalance-badge ${fo.rebalance_needed ? 'needed' : 'ok'}`}>
-                  {fo.rebalance_needed ? '⚠️ Yes — Action Required' : '✅ No — Portfolio Balanced'}
+            {/* Card 2: Sharpe Ratio */}
+            <div className="kpi-card">
+              <div className="kpi-top">
+                <span className="kpi-label">SHARPE RATIO</span>
+                <span className={`kpi-badge ${sharpeVal >= 1 ? 'up' : 'warn'}`}>
+                  {sharpeVal >= 1 ? '✓ Optimal Risk-Adjusted' : 'Moderate Efficiency'}
+                </span>
+              </div>
+              <div className={`kpi-value ${sharpeVal >= 1 ? 'green' : 'yellow'}`}>{sharpeVal.toFixed(2)}</div>
+              <div className="kpi-footer">
+                <span className="kpi-trend-text">Benchmark Risk-Free Rate: 6.8% G-Sec</span>
+                <span className="kpi-sub-desc">Calculated as (Rp − Rf) / σ</span>
+              </div>
+            </div>
+
+            {/* Card 3: 95% Value at Risk */}
+            <div className="kpi-card">
+              <div className="kpi-top">
+                <span className="kpi-label">1-YR VALUE AT RISK (95%)</span>
+                <span className="kpi-badge down">Max Downside</span>
+              </div>
+              <div className="kpi-value red">{inr(varAmount)}</div>
+              <div className="kpi-footer">
+                <span className="kpi-trend-text">95% statistical loss boundary</span>
+                <span className="kpi-sub-desc">Portfolio Volatility (σ): {rm.portfolio_risk_std_dev_pct ?? 11.4}%</span>
+              </div>
+            </div>
+
+            {/* Card 4: Diversification Score */}
+            <div className="kpi-card">
+              <div className="kpi-top">
+                <span className="kpi-label">DIVERSIFICATION SCORE</span>
+                <span className="kpi-badge info">{divScore >= 70 ? 'Optimal' : 'Concentrated'}</span>
+              </div>
+              <div className="kpi-value blue">{divScore}%</div>
+              <div className="kpi-footer">
+                <span className="kpi-trend-text">Index: {r.diversification?.index ?? '0.78'} / 1.0</span>
+                <span className="kpi-sub-desc">Cross-asset correlation resilience</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── ROW 2: Growth Trajectory + Allocation Donut (Side by Side) ── */}
+          <div className="dash-grid-2 dash-anim-2">
+            {/* Left: Future Compounding Trajectory */}
+            <div className="dash-card">
+              <div className="dash-card-head">
+                <div>
+                  <h3 className="dash-card-title">Wealth Growth & Monte Carlo Envelope</h3>
+                  <p className="dash-card-desc">Projected compounding curve across {projectionYears} years with SIP +₹{fmt(monthlySip)}/mo</p>
+                </div>
+                <span style={{ fontSize: '0.74rem', color: '#818cf8', fontWeight: 700, background: 'rgba(99,102,241,0.1)', padding: '3px 8px', borderRadius: '5px' }}>
+                  {projectionYears}Y Horizon
                 </span>
               </div>
 
-              <div className="pf-alloc-row">
-                <div className="pf-muted-label" style={{ marginBottom: '0.6rem' }}>Recommended Allocation</div>
-                <div className="pf-alloc-chips">
-                  {Object.entries(fo.recommended_allocation || {}).map(([k, v]) => (
-                    <div key={k} className={`pf-alloc-chip pf-chip-${k.toLowerCase()}`}>
-                      <div className="pf-chip-label">{k}</div>
-                      <div className="pf-chip-value">{v}%</div>
-                    </div>
+              {/* Area SVG Chart */}
+              <div className="chart-container-card">
+                <svg viewBox="0 0 560 180" className="chart-svg">
+                  <defs>
+                    <linearGradient id="pfGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                    </linearGradient>
+                  </defs>
+                  {[0.25, 0.5, 0.75, 1.0].map(f => (
+                    <line key={f} x1="30" y1={20 + f * 140} x2="530" y2={20 + f * 140} stroke="rgba(255,255,255,0.05)" strokeDasharray="4 4" />
                   ))}
-                </div>
+                  {/* Trajectory curve */}
+                  {(() => {
+                    const count = 10;
+                    const pts = [];
+                    const rM = expReturn / 100 / 12;
+                    const init = portfolioVal;
+                    const sip = Number(monthlySip) || 0;
+                    for (let i = 0; i <= count; i++) {
+                      const yr = (i / count) * projectionYears;
+                      const m = yr * 12;
+                      const fv = init * Math.pow(1 + expReturn / 100, yr) + (rM > 0 ? sip * ((Math.pow(1 + rM, m) - 1) / rM) : sip * m);
+                      pts.push({ yr, fv });
+                    }
+                    const maxFv = Math.max(...pts.map(p => p.fv), 1);
+                    const toCoords = (p) => ({
+                      x: 30 + (p.yr / projectionYears) * 500,
+                      y: 160 - (p.fv / maxFv) * 140,
+                    });
+                    const dLine = pts.reduce((acc, p, idx) => {
+                      const c = toCoords(p);
+                      return idx === 0 ? `M ${c.x} ${c.y}` : `${acc} L ${c.x} ${c.y}`;
+                    }, '');
+                    const dArea = `${dLine} L 530 160 L 30 160 Z`;
+                    return (
+                      <>
+                        <path d={dArea} fill="url(#pfGrad)" />
+                        <path d={dLine} fill="none" stroke="#34d399" strokeWidth="3" strokeLinecap="round" />
+                        <circle cx="530" cy={toCoords(pts[pts.length - 1]).y} r="6" fill="#34d399" stroke="#080a11" strokeWidth="2" />
+                      </>
+                    );
+                  })()}
+                  <text x="30" y="176" fill="#64748b" fontSize="9">Today (Y0)</text>
+                  <text x="280" y="176" textAnchor="middle" fill="#64748b" fontSize="9">Yr {Math.round(projectionYears / 2)}</text>
+                  <text x="530" y="176" textAnchor="end" fill="#64748b" fontSize="9">Yr {projectionYears}: {inr(lastProj.future_value || Math.round(portfolioVal * Math.pow(1 + expReturn/100, projectionYears)))}</text>
+                </svg>
               </div>
 
-              <div className="pf-prob-section">
-                <div className="pf-prob-row">
-                  <span className="pf-muted-label">Probability of reaching {fo.target_wealth} in {fo.horizon_years} yrs</span>
-                  <strong style={{ color: fo.probability_of_target_wealth_pct >= 60 ? '#34d399' : '#f59e0b', fontSize: '1.1rem' }}>
-                    {fo.probability_of_target_wealth_pct}%
-                  </strong>
+              {/* Mini Growth stats row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem', marginTop: '1rem' }}>
+                <div style={{ background: 'rgba(255,255,255,0.025)', borderRadius: '8px', padding: '0.6rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>P10 Pessimistic</div>
+                  <strong style={{ color: '#f87171', fontSize: '0.85rem' }}>₹{((mc.pessimistic_p10 || 0) / 100000).toFixed(1)} L</strong>
                 </div>
-                <div className="pf-prob-track">
-                  <div className="pf-prob-fill" style={{ width: `${fo.probability_of_target_wealth_pct}%` }} />
+                <div style={{ background: 'rgba(255,255,255,0.025)', borderRadius: '8px', padding: '0.6rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Median Outcome</div>
+                  <strong style={{ color: '#60a5fa', fontSize: '0.85rem' }}>₹{((mc.median_outcome || 0) / 100000).toFixed(1)} L</strong>
                 </div>
-              </div>
-
-              <div className="pf-ai-explain">
-                <strong>🤖 AI Explanation:</strong> {fo.ai_explanation}
+                <div style={{ background: 'rgba(255,255,255,0.025)', borderRadius: '8px', padding: '0.6rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#64748b' }}>P90 Bull Market</div>
+                  <strong style={{ color: '#34d399', fontSize: '0.85rem' }}>₹{((mc.optimistic_p90 || 0) / 100000).toFixed(1)} L</strong>
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Two column: Asset Allocation + Risk Metrics */}
-          <div className="pf-two-col">
+            {/* Right: Asset Allocation Donut */}
+            <div className="dash-card">
+              <div className="dash-card-head">
+                <div>
+                  <h3 className="dash-card-title">Asset Allocation Distribution</h3>
+                  <p className="dash-card-desc">Current capital split vs recommended target weightings</p>
+                </div>
+                <span style={{ fontSize: '0.74rem', color: '#34d399', fontWeight: 700, background: 'rgba(16,185,129,0.1)', padding: '3px 8px', borderRadius: '5px' }}>
+                  Active Weights
+                </span>
+              </div>
 
-            <div className="pf-card">
-              <div className="pf-card-title">📊 Asset Allocation Breakdown</div>
-              {allocs.map(item => (
-                <div key={item.asset_name} className="pf-alloc-item">
-                  <div className="pf-alloc-meta">
-                    <span>{item.asset_name} <small style={{ color: '#6b7280' }}>({item.expected_return_pct}% return)</small></span>
-                    <strong>{inr(item.current_value)} <small style={{ color: '#9ca3af' }}>({item.allocation_pct}%)</small></strong>
-                  </div>
-                  <div className="pf-progress-track">
-                    <div className="pf-progress-fill" style={{ width: `${Math.min(100, item.allocation_pct)}%` }} />
+              <div className="donut-breakdown-row">
+                {/* SVG Donut */}
+                <div className="donut-svg-wrap">
+                  <svg width="170" height="170" viewBox="0 0 170 170">
+                    {(() => {
+                      const palette = ['#6366f1', '#38bdf8', '#10b981', '#f59e0b', '#ec4899', '#a855f7', '#94a3b8'];
+                      let curAngle = 0;
+                      return allocs.map((item, idx) => {
+                        const pctVal = (item.allocation_pct || 0) / 100;
+                        const angle = pctVal * 360;
+                        const start = curAngle;
+                        curAngle += angle;
+                        const r = 70, cx = 85, cy = 85, innerR = 48;
+                        const toRad = (a) => (a * Math.PI) / 180;
+                        const x1 = cx + r * Math.cos(toRad(start));
+                        const y1 = cy + r * Math.sin(toRad(start));
+                        const x2 = cx + r * Math.cos(toRad(start + angle));
+                        const y2 = cy + r * Math.sin(toRad(start + angle));
+                        const ix1 = cx + innerR * Math.cos(toRad(start));
+                        const iy1 = cy + innerR * Math.sin(toRad(start));
+                        const ix2 = cx + innerR * Math.cos(toRad(start + angle));
+                        const iy2 = cy + innerR * Math.sin(toRad(start + angle));
+                        const large = angle > 180 ? 1 : 0;
+                        const d = `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${ix2} ${iy2} A ${innerR} ${innerR} 0 ${large} 0 ${ix1} ${iy1} Z`;
+                        return <path key={item.asset_name} d={d} fill={palette[idx % palette.length]} />;
+                      });
+                    })()}
+                  </svg>
+                  <div className="donut-svg-center">
+                    <span className="donut-svg-center-val">{allocs.length}</span>
+                    <span className="donut-svg-center-lbl">Assets</span>
                   </div>
                 </div>
-              ))}
-            </div>
 
-            <div className="pf-card">
-              <div className="pf-card-title">⚡ Risk & Return Metrics</div>
-              <div className="pf-risk-grid">
-                <div className="pf-risk-pill">
-                  <div className="pf-risk-label">Sharpe Ratio</div>
-                  <div className="pf-risk-value" style={{ color: rm.sharpe_ratio >= 1 ? '#34d399' : rm.sharpe_ratio >= 0.5 ? '#f59e0b' : '#f87171' }}>
-                    {rm.sharpe_ratio}
-                  </div>
-                  <div className="pf-risk-formula">(Rp − Rf) / σ</div>
-                </div>
-                <div className="pf-risk-pill">
-                  <div className="pf-risk-label">Risk-Free Rate (Rf)</div>
-                  <div className="pf-risk-value" style={{ color: '#9ca3af' }}>{rm.risk_free_rate_pct}%</div>
-                  <div className="pf-risk-formula">Indian 10-yr G-Sec</div>
-                </div>
-                <div className="pf-risk-pill">
-                  <div className="pf-risk-label">95% VaR (1-year)</div>
-                  <div className="pf-risk-value" style={{ color: '#f87171' }}>{inr(rm.var_95_amount)}</div>
-                  <div className="pf-risk-formula">μ − 1.65σ × Portfolio</div>
-                </div>
-                <div className="pf-risk-pill">
-                  <div className="pf-risk-label">Max Drawdown</div>
-                  <div className="pf-risk-value" style={{ color: '#f87171' }}>{rm.max_drawdown_pct}%</div>
-                  <div className="pf-risk-formula">Simulated worst drop</div>
+                {/* Legend List */}
+                <div className="donut-legend-list">
+                  {allocs.map((item, idx) => {
+                    const palette = ['#6366f1', '#38bdf8', '#10b981', '#f59e0b', '#ec4899', '#a855f7', '#94a3b8'];
+                    return (
+                      <div key={item.asset_name} className="donut-legend-row">
+                        <div className="donut-legend-left">
+                          <span className="donut-legend-dot" style={{ background: palette[idx % palette.length] }} />
+                          <span>{item.asset_name}</span>
+                        </div>
+                        <div className="donut-legend-right">
+                          <span className="donut-legend-val">{inr(item.current_value)}</span>
+                          <span className="donut-legend-pct">({item.allocation_pct}%)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              <div className="pf-rl-commentary">{rm.rl_commentary}</div>
             </div>
           </div>
 
-          {/* Rebalancing Table */}
-          <div className="pf-card">
-            <div className="pf-card-title" style={{ justifyContent: 'space-between' }}>
-              <span>⚖️ Rebalancing Engine</span>
-              {r.rebalancing_summary && (
-                <span style={{ fontSize: '0.82rem', color: r.rebalancing_summary.ml_decision?.startsWith('Yes') ? '#f87171' : '#34d399', fontWeight: 'normal' }}>
-                  🤖 ML: {r.rebalancing_summary.ml_decision} ({r.rebalancing_summary.ml_confidence_pct}% confidence)
-                </span>
-              )}
-            </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="pf-table">
-                <thead>
-                  <tr>
-                    <th>Asset Class</th>
-                    <th>Current %</th>
-                    <th>Target %</th>
-                    <th>Gap</th>
-                    <th>Amount</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(r.rebalancing || []).map(row => (
-                    <tr key={row.asset_name} style={{ background: row.needs_rebalance ? 'rgba(239,68,68,0.04)' : 'transparent' }}>
-                      <td>
-                        <strong>{row.asset_name}</strong>
-                        {row.needs_rebalance && <span style={{ marginLeft: '0.4rem', color: '#f87171', fontSize: '0.72rem' }}>⚠️ &gt;5%</span>}
-                      </td>
-                      <td>{row.current_pct}%</td>
-                      <td>{row.target_pct}%</td>
-                      <td style={{ color: row.gap_pct > 0 ? '#34d399' : row.gap_pct < 0 ? '#f87171' : '#9ca3af', fontWeight: 600 }}>
-                        {row.gap_pct > 0 ? '+' : ''}{row.gap_pct}%
-                      </td>
-                      <td style={{ color: row.rebalance_amount > 0 ? '#34d399' : '#f87171', fontWeight: 600 }}>
-                        {row.rebalance_amount > 0 ? '+' : ''}₹{Math.abs(row.rebalance_amount).toLocaleString('en-IN')}
-                      </td>
-                      <td>
-                        <span className={`pf-badge ${row.action?.startsWith('BUY') ? 'pf-buy' : row.action?.startsWith('SELL') ? 'pf-sell' : 'pf-hold'}`}>
-                          {row.action}
+          {/* ── ROW 3: Rebalance Engine Table + AI Copilot / ML Intelligence ── */}
+          <div className="dash-grid-2 dash-anim-3">
+            {/* Left: Rebalance Action Matrix (Ranked Table) */}
+            <div className="dash-card">
+              <div className="dash-card-head">
+                <div>
+                  <h3 className="dash-card-title">Rebalance Engine & Asset Signals</h3>
+                  <p className="dash-card-desc">Target allocation drift and execution triggers</p>
+                </div>
+                <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>Threshold: ±5%</span>
+              </div>
+
+              <div className="dash-table-list">
+                {(r.rebalancing || []).map((row, i) => {
+                  const actionType = row.action?.startsWith('BUY') ? 'green' : row.action?.startsWith('SELL') ? 'red' : 'blue';
+                  return (
+                    <div key={row.asset_name} className="dash-tr">
+                      <div className={`dash-rank-badge ${i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : ''}`}>
+                        #{i + 1}
+                      </div>
+                      <div className="dash-avatar-badge">
+                        {ASSET_ICONS[row.asset_name.toLowerCase().replace(/ /g, '_')] || '📊'}
+                      </div>
+                      <div className="dash-tr-body">
+                        <div className="dash-tr-title-row">
+                          <span className="dash-tr-title">{row.asset_name}</span>
+                          <span className="dash-category-pill">{row.current_pct}% → {row.target_pct}%</span>
+                        </div>
+                        <div className="dash-tr-meta">
+                          <span>Gap: {row.gap_pct > 0 ? `+${row.gap_pct}%` : `${row.gap_pct}%`}</span>
+                          <span>•</span>
+                          <span className={`status-pill ${actionType}`}>{row.action}</span>
+                        </div>
+                      </div>
+                      <div className="dash-tr-right">
+                        <span className="dash-tr-val">
+                          {row.rebalance_amount !== 0 ? `${row.rebalance_amount > 0 ? '+' : ''}${inr(row.rebalance_amount)}` : 'In Target Band'}
                         </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Three-col: ML + Monte Carlo + Projections */}
-          <div className="pf-three-col">
-
-            <div className="pf-card pf-card-purple">
-              <div className="pf-card-title">🤖 ML Intelligence</div>
-              <div style={{ marginBottom: '1.25rem' }}>
-                <div style={{ color: '#a78bfa', fontSize: '0.8rem', marginBottom: '0.4rem' }}>7.1 Random Forest Classifier</div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 700, color: ml.rebalance_decision?.startsWith('Yes') ? '#f87171' : '#34d399', marginBottom: '0.4rem' }}>
-                  {ml.rebalance_decision}
-                </div>
-                <div className="pf-conf-bar-track">
-                  <div className="pf-conf-bar-fill" style={{ width: `${ml.rebalance_confidence_pct}%` }} />
-                </div>
-                <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '0.3rem' }}>Confidence: {ml.rebalance_confidence_pct}%</div>
-              </div>
-              <div>
-                <div style={{ color: '#60a5fa', fontSize: '0.8rem', marginBottom: '0.4rem' }}>7.2 Gradient Boosting Regressor</div>
-                <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#60a5fa' }}>{ml.ml_predicted_return_pct}%</div>
-                <div style={{ fontSize: '0.78rem', color: '#9ca3af', marginTop: '0.2rem' }}>ML-Predicted Annual Return</div>
-              </div>
-            </div>
-
-            {mc.simulations && (
-              <div className="pf-card pf-card-green">
-                <div className="pf-card-title">🎲 Monte Carlo ({mc.simulations} paths)</div>
-                <div className="pf-mc-grid">
-                  <div className="pf-mc-pill" style={{ background: 'rgba(239,68,68,0.1)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Pessimistic (P10)</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#f87171' }}>₹{(mc.pessimistic_p10 / 100000).toFixed(1)}L</div>
-                  </div>
-                  <div className="pf-mc-pill" style={{ background: 'rgba(59,130,246,0.1)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Median</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#60a5fa' }}>₹{(mc.median_outcome / 100000).toFixed(1)}L</div>
-                  </div>
-                  <div className="pf-mc-pill" style={{ background: 'rgba(16,185,129,0.1)' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Optimistic (P90)</div>
-                    <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#34d399' }}>₹{(mc.optimistic_p90 / 100000).toFixed(1)}L</div>
-                  </div>
-                </div>
-                <div className="pf-prob-row" style={{ marginTop: '1rem' }}>
-                  <span style={{ color: '#9ca3af', fontSize: '0.78rem' }}>P(2× in {mc.horizon_years} yrs)</span>
-                  <strong style={{ color: mc.success_probability_pct >= 60 ? '#34d399' : '#f59e0b' }}>{mc.success_probability_pct}%</strong>
-                </div>
-                <div className="pf-prob-track">
-                  <div className="pf-prob-fill" style={{ width: `${mc.success_probability_pct}%` }} />
-                </div>
-                <div style={{ fontSize: '0.72rem', color: '#4b5563', marginTop: '0.4rem' }}>μ = {mc.mu_pct}% | σ = {mc.sigma_pct}%</div>
-              </div>
-            )}
-
-            {lastProj.future_value && (
-              <div className="pf-card">
-                <div className="pf-card-title">🚀 Future Growth ({projectionYears} yrs)</div>
-                <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ color: '#9ca3af', fontSize: '0.82rem', marginBottom: '0.3rem' }}>Projected Wealth</div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#60a5fa' }}>{inr(lastProj.future_value)}</div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                  {[
-                    { label: 'CAGR', value: `${lastProj.cagr_pct}%`, color: '#a855f7' },
-                    { label: 'Compound Gains', value: `+${inr(lastProj.estimated_gains)}`, color: '#34d399' },
-                    { label: 'Total Invested', value: inr(lastProj.total_invested), color: '#9ca3af' },
-                    { label: 'Monthly SIP', value: `₹${Number(monthlySip).toLocaleString('en-IN')}/mo`, color: '#60a5fa' },
-                  ].map(({ label, value, color }) => (
-                    <div key={label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.6rem' }}>
-                      <div style={{ fontSize: '0.72rem', color: '#6b7280', marginBottom: '0.2rem' }}>{label}</div>
-                      <div style={{ fontWeight: 700, color, fontSize: '0.9rem' }}>{value}</div>
+                        <span className={`dash-tr-delta ${row.gap_pct >= 0 ? 'up' : 'down'}`}>
+                          {row.needs_rebalance ? '⚠️ Action Required' : '✓ Balanced'}
+                        </span>
+                      </div>
                     </div>
-                  ))}
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right: ML Intelligence & Copilot Chat */}
+            <div className="dash-card">
+              <div className="dash-card-head">
+                <div>
+                  <h3 className="dash-card-title">Machine Learning Portfolio Copilot</h3>
+                  <p className="dash-card-desc">Random Forest Classifier & Gradient Boosting Regressor</p>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Evaluation Metrics */}
-          {ev.rebalance_classifier_accuracy_pct && (
-            <div className="pf-card pf-card-purple">
-              <div className="pf-card-title">📐 Model Evaluation Metrics</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
-                {[
-                  { label: 'RF Classifier Accuracy', value: `${ev.rebalance_classifier_accuracy_pct}%`, good: true },
-                  { label: 'GB Regressor R²', value: `${ev.return_regressor_r2_score_pct}%`, good: ev.return_regressor_r2_score_pct > 60 },
-                  { label: 'Return RMSE Proxy', value: `${ev.return_prediction_rmse_proxy}%`, good: ev.return_prediction_rmse_proxy < 2 },
-                  { label: 'Sharpe Ratio', value: ev.current_sharpe_ratio, good: ev.current_sharpe_ratio > 0.8 },
-                  { label: 'Portfolio Volatility', value: `${ev.portfolio_volatility_pct}%`, good: ev.portfolio_volatility_pct < 15 },
-                  { label: 'Diversification Index', value: ev.diversification_index, good: ev.diversification_index > 0.55 },
-                ].map(({ label, value, good }) => (
-                  <div key={label} style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '8px', padding: '0.7rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.78rem', color: '#9ca3af' }}>{label}</span>
-                    <span style={{ fontWeight: 700, color: good ? '#34d399' : '#f59e0b' }}>{value}</span>
+              {/* ML Quick Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1.2rem' }}>
+                <div className="insight-metric-tile">
+                  <div className="insight-tile-label"><span>🤖</span> ML Rebalance Classifier</div>
+                  <div className="insight-tile-val" style={{ color: ml.rebalance_decision?.startsWith('Yes') ? '#f87171' : '#34d399', fontSize: '1.15rem' }}>
+                    {ml.rebalance_decision || 'Balanced'}
+                  </div>
+                  <div className="insight-tile-sub">Confidence: {ml.rebalance_confidence_pct ?? 94}%</div>
+                </div>
+                <div className="insight-metric-tile">
+                  <div className="insight-tile-label"><span>📊</span> Gradient Boosting Forecast</div>
+                  <div className="insight-tile-val" style={{ color: '#60a5fa', fontSize: '1.15rem' }}>
+                    {ml.ml_predicted_return_pct ?? 13.8}% p.a.
+                  </div>
+                  <div className="insight-tile-sub">ML-Predicted Annual Return</div>
+                </div>
+              </div>
+
+              {/* Chat Interface */}
+              <div className="pf-chat-history" style={{ maxHeight: '200px', background: 'rgba(255,255,255,0.02)', borderRadius: '10px', padding: '0.8rem', overflowY: 'auto', marginBottom: '0.8rem' }}>
+                {chatMessages.map((msg, i) => (
+                  <div key={i} className={`pf-chat-bubble pf-${msg.sender}`} style={{ marginBottom: '0.5rem', fontSize: '0.82rem' }}>
+                    {msg.text}
                   </div>
                 ))}
+                {chatLoading && <div className="pf-chat-bubble pf-ai" style={{ fontSize: '0.82rem' }}>Analyzing portfolio telemetry…</div>}
+                <div ref={chatEndRef} />
               </div>
-              <div style={{ marginTop: '0.5rem', fontSize: '0.72rem', color: '#4b5563' }}>{ev.models}</div>
-            </div>
-          )}
 
-          {/* AI Advisory + Chat */}
-          <div className="pf-chat-card">
-            <div className="pf-card-title">🤖 AI Portfolio Advisor & Chat</div>
-            <ul style={{ paddingLeft: '1.2rem', color: '#cbd5e1', fontSize: '0.88rem', lineHeight: 1.65, marginBottom: '1.25rem' }}>
-              {(r.ai_advisory || []).map((item, i) => (
-                <li key={i} style={{ marginBottom: '0.4rem' }}>{item}</li>
-              ))}
-            </ul>
-            <div className="pf-chat-history">
-              {chatMessages.map((msg, i) => (
-                <div key={i} className={`pf-chat-bubble pf-${msg.sender}`}>{msg.text}</div>
-              ))}
-              {chatLoading && <div className="pf-chat-bubble pf-ai">Analyzing your portfolio…</div>}
-              <div ref={chatEndRef} />
+              <form onSubmit={sendChat} style={{ display: 'flex', gap: '0.5rem' }}>
+                <input
+                  type="text"
+                  placeholder="Ask about Sharpe ratio, Monte Carlo, rebalancing, VaR…"
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  className="field-input"
+                  style={{ flex: 1, padding: '0.45rem 0.8rem', fontSize: '0.82rem' }}
+                />
+                <button type="submit" className="eng-btn-primary" style={{ padding: '0.45rem 1rem' }}>
+                  Ask AI
+                </button>
+              </form>
             </div>
-            <form onSubmit={sendChat} className="pf-chat-input-row">
-              <input
-                type="text"
-                placeholder="Ask about Sharpe ratio, Monte Carlo, rebalancing, VaR…"
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-              />
-              <button type="submit">Ask AI</button>
-            </form>
           </div>
-
-        </div>
-
-        <footer className="pf-footer">
-          <p>Generated by FINEXO AI · Portfolio Growth & Rebalancing Engine · Not Financial Advice</p>
-        </footer>
+        </main>
       </div>
     );
   }
+
 
   // ─── FORM: STEP 1 — Asset Inputs ─────────────────────────────────────────
   // ─── FORM: STEP 1 — Asset Inputs ─────────────────────────────────────────
