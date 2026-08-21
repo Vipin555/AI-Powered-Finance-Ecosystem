@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DecryptText } from './components/ui/decrypt-text';
 import './index.css';
 
 // ─── Engine definitions (hardcoded so they always show) ───────────────────────
@@ -347,28 +346,8 @@ export default function App() {
 
         {/* Heading */}
         <h1 className="v-hero__title" style={{ animationDelay: '0.2s' }}>
-          <DecryptText
-            text="Your Money,"
-            as="span"
-            variant="display"
-            trigger="mount"
-            stagger={36}
-            speed={35}
-            retriggerOnHover
-          />
-          <br />
-          <span className="v-hero__title-gradient">
-            <DecryptText
-              text="Intelligently Managed"
-              as="span"
-              variant="display"
-              trigger="mount"
-              startDelay={380}
-              stagger={34}
-              speed={35}
-              retriggerOnHover
-            />
-          </span>
+          Your Money,<br />
+          <span className="v-hero__title-gradient">Intelligently Managed</span>
         </h1>
 
         <p className="v-hero__sub" style={{ animationDelay: '0.35s' }}>
