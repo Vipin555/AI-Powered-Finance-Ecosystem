@@ -171,7 +171,7 @@ function DecryptTextBase({
     }
   }, []);
 
-  const play = React.useCallback(() => {
+  const play = React.useCallback((isHover = false) => {
     const rng = makeRng(seed + runRef.current * 7919);
     runRef.current += 1;
     stop();
@@ -182,11 +182,15 @@ function DecryptTextBase({
     lastStartRef.current = performance.now();
     playedRef.current = true;
 
+    const actualStartDelay = isHover ? 20 : startDelay;
+    const actualJitter = isHover ? Math.min(jitter, 40) : jitter;
+    const actualStagger = isHover ? Math.min(stagger, 28) : stagger;
+
     const lockAt = new Float64Array(cells.length);
     const nextAt = new Float64Array(cells.length);
     const locked = new Uint8Array(cells.length);
     cells.forEach((el, idx) => {
-      lockAt[idx] = startDelay + idx * stagger + (rng() * 2 - 1) * jitter;
+      lockAt[idx] = actualStartDelay + idx * actualStagger + (rng() * 2 - 1) * actualJitter;
       nextAt[idx] = 0;
       el.dataset.state = "scramble";
       el.textContent = pool.charAt((rng() * pool.length) | 0);
@@ -216,7 +220,7 @@ function DecryptTextBase({
         if (loop !== false && loop > 0) {
           timerRef.current = setTimeout(() => {
             timerRef.current = null;
-            play();
+            play(false);
           }, loop);
         }
         return;
@@ -241,13 +245,13 @@ function DecryptTextBase({
       return;
     }
     if (!playedRef.current) {
-      play();
+      play(false);
       return;
     }
     if (loop !== false && loop > 0 && rafRef.current == null && timerRef.current == null) {
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
-        play();
+        play(false);
       }, Math.min(loop, 3000));
     }
   }, [loop, play, reduceNow, resolveAll, stop, trigger, visible]);
@@ -258,23 +262,30 @@ function DecryptTextBase({
     if (reduceNow || !retriggerOnHover) return;
     if (rafRef.current != null) return;
     if (performance.now() - lastStartRef.current < HOVER_COOLDOWN) return;
-    play();
+    play(true);
   }, [play, reduceNow, retriggerOnHover]);
 
   const terminal = variant === "terminal";
-  const scrambleColor = terminal
-    ? "color-mix(in oklab, var(--motiq-muted, #64748b) 80%, var(--motiq-secondary-accent, #38bdf8))"
-    : "var(--motiq-muted, #64748b)";
-  const lockedColor = terminal
-    ? "color-mix(in oklab, var(--motiq-fg, #f8fafc) 84%, var(--motiq-muted, #64748b))"
-    : "var(--motiq-fg, #f8fafc)";
 
   const css = `
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border-width:0!important;}
-.${scope} [data-mk-char]{color:${lockedColor};}
-.${scope} [data-mk-char][data-state="scramble"]{color:${scrambleColor};}
-.${scope} [data-mk-char][data-state="lock"]{color:${lockedColor};animation:${scope}-flash ${FLASH_MS}ms cubic-bezier(.2,0,0,1);}
-@keyframes ${scope}-flash{0%{color:var(--motiq-accent-text, #818cf8);text-shadow:0 0 24px color-mix(in oklab, var(--motiq-accent, #6366f1) 70%, transparent);}100%{text-shadow:0 0 0 transparent;}}
+.${scope} [data-mk-char]{
+  display:inline-block;
+  font-variant-numeric:tabular-nums;
+  transition:filter 0.2s ease, opacity 0.2s ease;
+}
+.${scope} [data-mk-char][data-state="scramble"]{
+  opacity:0.85;
+  filter:drop-shadow(0 0 8px rgba(129, 140, 248, 0.45));
+}
+.${scope} [data-mk-char][data-state="lock"]{
+  opacity:1;
+  animation:${scope}-pop ${FLASH_MS}ms cubic-bezier(.2,0,0,1);
+}
+@keyframes ${scope}-pop{
+  0%{filter:drop-shadow(0 0 16px rgba(167, 139, 250, 0.8)) brightness(1.3);transform:scale(1.08);}
+  100%{filter:drop-shadow(0 0 0 transparent) brightness(1);transform:scale(1);}
+}
 .${scope} [data-mk-caret]{animation:${scope}-caret 1.1s steps(1) infinite;}
 @keyframes ${scope}-caret{50%{opacity:0;}}
 @media (prefers-reduced-motion: reduce){.${scope} [data-mk-char][data-state="lock"],.${scope} [data-mk-caret]{animation:none;}}
