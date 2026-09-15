@@ -125,5 +125,5 @@ reg_path = os.path.join(out_dir, "portfolio_return_reg.pkl")
 joblib.dump(rf_pipeline, clf_path)
 joblib.dump(gb_pipeline, reg_path)
 
-print(f"[OK] Saved Classifier → {clf_path}")
-print(f"[OK] Saved Regressor  → {reg_path}")
+print(f"[OK] Saved Classifier -> {clf_path}")
+print(f"[OK] Saved Regressor  -> {reg_path}")

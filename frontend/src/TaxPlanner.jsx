@@ -186,6 +186,7 @@ export default function TaxPlanner() {
   }, [getEngineData]);
 
   const [result, setResult] = useState(null);
+  const [mlTaxRec, setMlTaxRec] = useState(null);
   const [animating, setAnimating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
@@ -262,6 +263,28 @@ export default function TaxPlanner() {
           });
           const data = await res.json();
           setResult(data);
+          // Also call ML Tax Recommender (M6)
+          try {
+            const mlPayload = {
+              annual_salary: parseFloat(formData.salary_income) || 0,
+              age: parseInt(formData.age) || 30,
+              current_80c: parseFloat(formData.c80c) || 0,
+              current_80d: parseFloat(formData.c80d) || 0,
+              current_nps: parseFloat(formData.nps) || 0,
+              home_loan_interest: parseFloat(formData.home_loan) || 0,
+              hra_exemption: parseFloat(formData.hra) || 0,
+              emi_ratio: 0.2,
+              savings_ratio: 0.25,
+              has_health_insurance: parseFloat(formData.c80d) > 5000,
+              risk_appetite: formData.risk_profile === 'Aggressive' ? 0.8 : formData.risk_profile === 'Conservative' ? 0.2 : 0.5
+            };
+            const mlRes = await fetch('http://localhost:8000/api/ml/tax-recommend', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(mlPayload)
+            });
+            const mlData = await mlRes.json();
+            setMlTaxRec(mlData);
+          } catch (e) { /* silent */ }
         } catch (err) {
           alert('Failed to connect to AI engine. Make sure Python backend is running.');
         } finally { setLoading(false); }
@@ -346,6 +369,52 @@ export default function TaxPlanner() {
               </span>
             </div>
           </div>
+
+          {/* ── ML: Smart Instrument Picks ── */}
+          {mlTaxRec && mlTaxRec.status === 'ok' && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.06))',
+              border: '1px solid rgba(99,102,241,0.3)', borderRadius: 14,
+              padding: '1.4rem', marginBottom: '1.5rem'
+            }} className="dash-anim-1">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontWeight: 700, fontSize: '1.05rem' }}>🎯 ML Smart Tax Instrument Picks</h3>
+                  <p style={{ margin: '0.2rem 0 0', color: 'var(--text-secondary)', fontSize: '0.83rem' }}>
+                    Gradient Boosting Classifier · Top pick: <strong style={{ color: '#818cf8' }}>{mlTaxRec.top_pick}</strong>
+                    &nbsp;· Marginal rate: {mlTaxRec.marginal_tax_rate}%
+                  </p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Unused 80C</p>
+                  <p style={{ margin: 0, fontWeight: 700, color: '#f59e0b', fontSize: '1rem' }}>₹{Math.round(mlTaxRec.unused_80c || 0).toLocaleString('en-IN')}</p>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '0.8rem' }}>
+                {(mlTaxRec.recommendations || []).slice(0, 4).map((rec, i) => (
+                  <div key={i} style={{
+                    background: i === 0 ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${i === 0 ? 'rgba(99,102,241,0.4)' : 'rgba(255,255,255,0.08)'}`,
+                    borderRadius: 10, padding: '0.9rem'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                      <span style={{ fontWeight: 700, fontSize: '0.85rem', color: i === 0 ? '#818cf8' : 'var(--text-primary)' }}>
+                        {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '▫️'} #{rec.rank} {rec.instrument}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      <span>ML Score: <strong style={{ color: '#a5b4fc' }}>{Math.round((rec.ml_probability || 0) * 100)}%</strong></span>
+                      <span>Save: <strong style={{ color: '#4ade80' }}>₹{Math.round(rec.estimated_tax_saving || 0).toLocaleString('en-IN')}</strong></span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.06)', padding: '0.15rem 0.5rem', borderRadius: 5 }}>Lock-in: {rec.details?.lock_in}</span>
+                      <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.06)', padding: '0.15rem 0.5rem', borderRadius: 5 }}>Risk: {rec.details?.risk}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── ROW 1: 4 Top KPI Cards ── */}
           <div className="kpi-row-4 dash-anim-1">

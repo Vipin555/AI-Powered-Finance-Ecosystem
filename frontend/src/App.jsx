@@ -210,20 +210,36 @@ function Canvas3D() {
 
 // ─── Marquee ticker ────────────────────────────────────────────────────────────
 const TICKER_ITEMS = [
-  '₹NIFTY 24,823 ▲ +0.42%', 'SENSEX 81,343 ▲ +0.38%', 'GOLD ₹74,320/10g ▲ +0.12%',
-  'USD/INR 83.94 ▼ -0.08%', 'REPO RATE 6.50% →', '10Y BOND 7.08% ▲',
-  'SGB Apr-2025 ₹8,634 ▲', 'NIFTY BANK 52,480 ▲ +0.55%', 'MIDCAP 150 ▲ +0.61%',
+  { symbol: '₹NIFTY', value: '24,823', dir: 'up', change: '+0.42%', type: 'equity' },
+  { symbol: 'SENSEX', value: '81,343', dir: 'up', change: '+0.38%', type: 'equity' },
+  { symbol: 'GOLD', value: '₹74,320/10g', dir: 'up', change: '+0.12%', type: 'commodity' },
+  { symbol: 'USD/INR', value: '83.94', dir: 'down', change: '-0.08%', type: 'forex' },
+  { symbol: 'REPO RATE', value: '6.50%', dir: 'neutral', change: '6.50% →', type: 'rate' },
+  { symbol: '10Y BOND', value: '7.08%', dir: 'up', change: '+0.03%', type: 'bond' },
+  { symbol: 'SGB Apr-2025', value: '₹8,634', dir: 'up', change: '+0.25%', type: 'gold' },
+  { symbol: 'NIFTY BANK', value: '52,480', dir: 'up', change: '+0.55%', type: 'equity' },
+  { symbol: 'MIDCAP 150', value: '18,920', dir: 'up', change: '+0.61%', type: 'equity' },
 ];
 
 function Ticker() {
   return (
     <div className="ticker-wrap">
-      <div className="ticker-label">LIVE</div>
+      <div className="ticker-label">
+        <span className="ticker-pulse-dot" />
+        <span className="ticker-label-text">LIVE</span>
+      </div>
       <div className="ticker-track">
         <div className="ticker-inner">
           {[...TICKER_ITEMS, ...TICKER_ITEMS].map((item, i) => (
-            <span key={i} className="ticker-item">
-              {item}
+            <span key={i} className={`ticker-item ticker-item--${item.type}`}>
+              <span className="ticker-item__sym">{item.symbol}</span>
+              <span className="ticker-item__val">{item.value}</span>
+              <span className={`ticker-item__badge ticker-item__badge--${item.dir}`}>
+                {item.dir === 'up' && '▲ '}
+                {item.dir === 'down' && '▼ '}
+                {item.dir === 'neutral' && '→ '}
+                {item.change}
+              </span>
               <span className="ticker-sep">·</span>
             </span>
           ))}

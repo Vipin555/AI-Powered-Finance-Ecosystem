@@ -37,6 +37,81 @@ const STEPS = [
   },
 ];
 
+// ─── ML Persona Card ─────────────────────────────────────────────────────────
+function PersonaCard({ persona }) {
+  if (!persona || persona.status !== 'ok') return null;
+  return (
+    <div className="adv-card full-card" style={{
+      background: `linear-gradient(135deg, ${persona.color}18, ${persona.color}06)`,
+      borderLeft: `3px solid ${persona.color}`
+    }}>
+      <div className="card-header-flex">
+        <div>
+          <h3 className="card-sec-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{
+              background: persona.color, borderRadius: '50%', width: 28, height: 28,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.75rem', color: '#fff', fontWeight: 700, flexShrink: 0
+            }}>ML</span>
+            🧠 Financial Persona · <span style={{ color: persona.color }}>{persona.name}</span>
+          </h3>
+          <p className="card-sec-subtitle">K-Means behavioural archetype · Confidence: {Math.round((persona.confidence || 0) * 100)}%</p>
+        </div>
+      </div>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: '1.2rem', lineHeight: 1.6 }}>{persona.description}</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.2rem' }}>
+        <div>
+          <p style={{ color: 'var(--green)', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.85rem' }}>✅ Strengths</p>
+          <ul style={{ padding: '0 0 0 1.1rem', margin: 0 }}>
+            {(persona.strengths || []).map((s, i) => (
+              <li key={i} style={{ color: 'var(--text-secondary)', marginBottom: '0.3rem', fontSize: '0.85rem' }}>{s}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p style={{ color: '#f59e0b', fontWeight: 600, marginBottom: '0.5rem', fontSize: '0.85rem' }}>⚠️ Watch Out For</p>
+          <ul style={{ padding: '0 0 0 1.1rem', margin: 0 }}>
+            {(persona.blindspots || []).map((b, i) => (
+              <li key={i} style={{ color: 'var(--text-secondary)', marginBottom: '0.3rem', fontSize: '0.85rem' }}>{b}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Anomaly Banner ───────────────────────────────────────────────────────────
+function AnomalyBanner({ anomaly }) {
+  if (!anomaly || !anomaly.is_anomaly) return null;
+  const sevColor = anomaly.severity === 'High' ? '#ef4444' : '#f59e0b';
+  return (
+    <div style={{
+      background: `linear-gradient(90deg, ${sevColor}20, ${sevColor}08)`,
+      border: `1px solid ${sevColor}50`,
+      borderLeft: `4px solid ${sevColor}`,
+      borderRadius: 12, padding: '1rem 1.2rem',
+      display: 'flex', gap: '0.8rem', alignItems: 'flex-start',
+      marginBottom: '1rem'
+    }}>
+      <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>🚨</span>
+      <div>
+        <p style={{ fontWeight: 700, color: sevColor, margin: '0 0 0.3rem' }}>
+          ML Anomaly Alert — {anomaly.severity} Severity
+        </p>
+        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.87rem' }}>
+          Isolation Forest detected unusual financial patterns. Score: {anomaly.anomaly_score?.toFixed(3)}
+        </p>
+        {(anomaly.messages || []).map((msg, i) => (
+          <p key={i} style={{ color: 'var(--text-secondary)', margin: '0.25rem 0 0', fontSize: '0.83rem' }}>
+            → {msg}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Utility components ──────────────────────────────────────────────────────
 function ScoreRing({ score }) {
   const radius = 70;
@@ -553,6 +628,12 @@ export default function FinancialAdvisor() {
               </div>
             </div>
           )}
+
+          {/* ── ML: Anomaly Alert Banner ── */}
+          <AnomalyBanner anomaly={r.ml_anomaly} />
+
+          {/* ── ML: Financial Persona Card ── */}
+          <PersonaCard persona={r.ml_persona} />
 
           {/* ── ROW 4: Monthly Budget + Emergency Fund ── */}
           <div className="adv-row adv-row-2">

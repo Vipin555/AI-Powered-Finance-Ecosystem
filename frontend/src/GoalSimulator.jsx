@@ -602,8 +602,11 @@ export default function GoalSimulator() {
                 {displaySims.map((sim, i) => {
                   const prob = sim.final_probability ?? sim.health_adjusted_probability ?? 0;
                   const probPct = Math.round(prob * 100);
-                  const isHigh = prob >= 0.75;
-                  const isMed = prob >= 0.5;
+                  const mlProb = sim.ml_surrogate_probability;
+                  const mlPct = mlProb != null ? Math.round(mlProb * 100) : null;
+                  const blendPct = mlPct != null ? Math.round((probPct * 0.6 + mlPct * 0.4)) : probPct;
+                  const isHigh = blendPct >= 75;
+                  const isMed = blendPct >= 50;
                   const statusClass = isHigh ? 'green' : isMed ? 'yellow' : 'red';
                   const statusText = isHigh ? 'High Confidence' : isMed ? 'On Track' : 'Needs Capital';
 
@@ -627,7 +630,15 @@ export default function GoalSimulator() {
                         <div className="dash-tr-meta">
                           <span>Target: ₹{fmt(sim.future_target_adjusted_for_inflation)}</span>
                           <span>•</span>
-                          <span className={`status-pill ${statusClass}`}>{statusText} ({probPct}%)</span>
+                          <span className={`status-pill ${statusClass}`}>{statusText} (MC: {probPct}%)</span>
+                          {mlPct != null && (
+                            <span style={{
+                              fontSize: '0.72rem', padding: '2px 7px', borderRadius: 5, fontWeight: 600,
+                              background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)'
+                            }}>
+                              🧠 MLP: {mlPct}%
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="dash-tr-right">

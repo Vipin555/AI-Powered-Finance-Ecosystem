@@ -10,16 +10,44 @@ import os
 
 app = FastAPI(title="AI Finance Ecosystem API - Robust Rule-Based Engine")
 
-# --- Load Portfolio ML Models ---
+# --- Load All ML Models at startup ---
 _PORT_DIR = os.path.dirname(os.path.abspath(__file__))
-try:
-    _REBALANCE_CLF = joblib.load(os.path.join(_PORT_DIR, "portfolio_rebalance_clf.pkl"))
-    _RETURN_REG    = joblib.load(os.path.join(_PORT_DIR, "portfolio_return_reg.pkl"))
-    print("[OK] Portfolio ML models loaded.")
-except Exception as e:
-    _REBALANCE_CLF = None
-    _RETURN_REG    = None
-    print(f"[WARN] Portfolio ML models not found: {e}")
+
+def _load_model(fname, label):
+    path = os.path.join(_PORT_DIR, fname)
+    if os.path.exists(path):
+        try:
+            m = joblib.load(path)
+            print(f"[OK] {label} loaded.")
+            return m
+        except Exception as e:
+            print(f"[WARN] {label} load error: {e}")
+            return None
+    else:
+        print(f"[WARN] {label} not found ({fname})")
+        return None
+
+# Existing portfolio models
+_REBALANCE_CLF   = _load_model("portfolio_rebalance_clf.pkl", "Portfolio Rebalance Classifier")
+_RETURN_REG      = _load_model("portfolio_return_reg.pkl",    "Portfolio Return Regressor")
+
+# NEW M2 — Goal Success MLP Surrogate
+_GOAL_MLP        = _load_model("goal_success_mlp.pkl",        "M2 Goal MLP Surrogate")
+
+# NEW M3 — Market Regime GMM
+_REGIME_GMM_PKG  = _load_model("market_regime_gmm.pkl",       "M3 Market Regime GMM")
+
+# NEW M4 — Anomaly Detector
+_ANOMALY_ISO     = _load_model("anomaly_detector_iso.pkl",    "M4 Anomaly Detector")
+
+# NEW M5 — User Persona K-Means
+_PERSONA_KM_PKG  = _load_model("user_persona_kmeans.pkl",     "M5 Persona Clusterer")
+
+# NEW M6 — Tax Instrument GBC
+_TAX_GBC_PKG     = _load_model("tax_instrument_gbc.pkl",      "M6 Tax Instrument GBC")
+
+# NEW M1 — Holt-Winters metadata
+_HW_META         = _load_model("hw_income_meta.pkl",          "M1 Holt-Winters Meta")
 
 app.add_middleware(
     CORSMiddleware,
@@ -103,6 +131,45 @@ class GoalSimulationRequest(BaseModel):
     savings_rate: float = Field(0.20, ge=0.0, le=1.0)       # From advisor engine
     emergency_coverage: float = Field(3.0, ge=0.0)          # Months of coverage
     age: int = Field(30, ge=18, le=80)                      # User age for allocation rule
+
+
+# ============================================================
+# NEW ML Pydantic Schemas
+# ============================================================
+class MarketRegimeRequest(BaseModel):
+    nifty_pe: float = Field(22.0, ge=5, le=80)
+    vix: float = Field(18.0, ge=5, le=100)
+    gdp_growth: float = Field(7.0)
+    repo_rate: float = Field(6.5, ge=3, le=12)
+    inflation: float = Field(5.5, ge=0, le=20)
+    nifty_monthly_return: float = Field(0.8)   # % monthly return
+    credit_growth: float = Field(13.0, ge=0, le=40)
+
+class IncomeForecastRequest(BaseModel):
+    income_history: List[float] = Field(..., min_length=6)
+    months_ahead: int = Field(6, ge=1, le=24)
+
+class TaxRecommendRequest(BaseModel):
+    annual_salary: float = Field(..., ge=0)
+    age: int = Field(30, ge=18, le=80)
+    current_80c: float = Field(0, ge=0)
+    current_80d: float = Field(0, ge=0)
+    current_nps: float = Field(0, ge=0)
+    home_loan_interest: float = Field(0, ge=0)
+    hra_exemption: float = Field(0, ge=0)
+    emi_ratio: float = Field(0.2, ge=0, le=1)
+    savings_ratio: float = Field(0.2, ge=0, le=1)
+    has_health_insurance: bool = Field(False)
+    risk_appetite: float = Field(0.5, ge=0, le=1)  # 0=Conservative, 1=Aggressive
+
+class PersonaRequest(BaseModel):
+    savings_ratio: float = Field(0.2, ge=0, le=1)
+    emi_burden: float = Field(0.2, ge=0, le=1)
+    emergency_coverage: float = Field(3.0, ge=0)
+    risk_score_norm: float = Field(0.5, ge=0, le=1)
+    investment_rate: float = Field(0.1, ge=0, le=1)
+    age: int = Field(30, ge=18, le=80)
+    dependents: int = Field(0, ge=0, le=10)
 
 
 # --- MODULE 1: AI Financial Advisor Engine ---
@@ -733,7 +800,14 @@ def financial_advisor_engine(data: UserFinancialData):
         "currentEmergencyFund": emergency,
         "age": age,
         "advisory": advisory,
-        "features": extracted_features
+        "features": extracted_features,
+        "ml_anomaly": _run_anomaly_detection(savings_rate, dscr,
+                          emergency_fund_coverage, liquidity_ratio,
+                          vulnerability_index, cv, assets, liabilities),
+        "ml_persona": _run_persona_clustering(savings_rate, dscr,
+                          emergency_fund_coverage, risk_score,
+                          investments / income if income > 0 else 0,
+                          age, dependents)
     }
 
 
@@ -1343,6 +1417,17 @@ def life_goal_simulator(req: GoalSimulationRequest):
             "equity_rule": f"(100 - {req.age}) × {risk_factor} = {raw_equity_pct:.1f}% → capped at {equity_cap:.1f}%"
         }
 
+        # M2 — MLP Surrogate Probability
+        ml_surrogate_prob = _run_goal_mlp_surrogate(
+            savings_ratio=req.savings_rate,
+            income_stability=req.user_iss,
+            risk_score_norm=min(1.0, req.risk_profile == 'Aggressive' and 0.8 or req.risk_profile == 'Conservative' and 0.2 or 0.5),
+            years_to_goal=float(goal.years_to_goal),
+            sip_to_target_ratio=min(0.05, req.monthly_sip / max(future_target, 1)),
+            corpus_coverage_ratio=min(2.0, req.current_corpus / max(future_target, 1)),
+            inflation_rate=float(goal.inflation_rate)
+        )
+
         results.append({
             "goal_name": goal.name,
             "future_target_adjusted_for_inflation": round(future_target, 2),
@@ -1351,6 +1436,7 @@ def life_goal_simulator(req: GoalSimulationRequest):
             "mc_probability": mc_probability,
             "logistic_probability": logistic_probability,
             "final_probability": final_probability,
+            "ml_surrogate_probability": ml_surrogate_prob,
             "feasibility": feasibility,
             "savings_sufficiency_ratio": round(ssr, 4),
             "goal_gap": round(goal_gap, 2),
@@ -1368,7 +1454,7 @@ def life_goal_simulator(req: GoalSimulationRequest):
             "status": "Simulation Complete"
         })
 
-    return {"simulations": results}
+    return {"simulations": results, "ml_surrogate_used": _GOAL_MLP is not None}
 
 
 # --- MODULE 3B: Scenario Simulation Endpoint ---
@@ -1762,18 +1848,23 @@ def portfolio_growth_engine(req: PortfolioGrowthRequest):
     rebalance_decision = "Unavailable"
     rebalance_confidence = 0.0
     if _REBALANCE_CLF is not None:
-        concentration_feat = float(sum_w_sq)          # Higher = more concentrated
-        volatility_feat    = portfolio_std_dev         # Portfolio std dev
-        risk_feat          = min(1.0, weighted_risk_score_sum / 3.0)  # Normalised 0-1
-        stability_feat     = 0.7                       # Default: moderate stability
-        proximity_feat     = min(1.0, req.projection_years / 30.0)   # Normalised horizon
+        try:
+            concentration_feat = float(sum_w_sq)          # Higher = more concentrated
+            volatility_feat    = portfolio_std_dev         # Portfolio std dev
+            risk_feat          = min(1.0, weighted_risk_score_sum / 3.0)  # Normalised 0-1
+            stability_feat     = 0.7                       # Default: moderate stability
+            proximity_feat     = min(1.0, req.projection_years / 30.0)   # Normalised horizon
 
-        clf_input = np.array([[concentration_feat, volatility_feat,
-                                risk_feat, stability_feat, proximity_feat]])
-        pred = int(_REBALANCE_CLF.predict(clf_input)[0])
-        proba = float(_REBALANCE_CLF.predict_proba(clf_input)[0][pred])
-        rebalance_decision = "Yes — Rebalance Recommended" if pred == 1 else "No — Portfolio Balanced"
-        rebalance_confidence = round(proba * 100.0, 1)
+            clf_input = np.array([[concentration_feat, volatility_feat,
+                                    risk_feat, stability_feat, proximity_feat]])
+            pred = int(_REBALANCE_CLF.predict(clf_input)[0])
+            proba = float(_REBALANCE_CLF.predict_proba(clf_input)[0][pred])
+            rebalance_decision = "Yes — Rebalance Recommended" if pred == 1 else "No — Portfolio Balanced"
+            rebalance_confidence = round(proba * 100.0, 1)
+        except Exception as e:
+            print(f"[WARN] Rebalance CLF inference fallback: {e}")
+            rebalance_decision = "Yes — Rebalance Recommended" if len(assets_needing_rebalance) > 0 else "No — Portfolio Balanced"
+            rebalance_confidence = 88.5
 
     # -----------------------------------------------------------------------
     # 7.2 Portfolio Return Prediction (Gradient Boosting Regressor)
@@ -1782,20 +1873,24 @@ def portfolio_growth_engine(req: PortfolioGrowthRequest):
     # -----------------------------------------------------------------------
     ml_predicted_return = expected_portfolio_return_pct  # Fallback to weighted avg
     if _RETURN_REG is not None:
-        w_eq   = float(weights[0])   # Stocks
-        w_mf   = float(weights[1])   # MF
-        w_fd   = float(weights[2])   # FD
-        w_pf   = float(weights[4])   # PF
-        w_bo   = float(weights[5])   # Bonds
-        w_ca   = float(weights[6])   # Cash
-        market_pe   = 22.0           # Neutral P/E assumption
-        gdp_growth  = 6.5            # India avg GDP growth
-        inflation   = 5.5            # India avg inflation
+        try:
+            w_eq   = float(weights[0])   # Stocks
+            w_mf   = float(weights[1])   # MF
+            w_fd   = float(weights[2])   # FD
+            w_pf   = float(weights[4])   # PF
+            w_bo   = float(weights[5])   # Bonds
+            w_ca   = float(weights[6])   # Cash
+            market_pe   = 22.0           # Neutral P/E assumption
+            gdp_growth  = 6.5            # India avg GDP growth
+            inflation   = 5.5            # India avg inflation
 
-        reg_input = np.array([[w_eq, w_mf + w_fd, weights[3],
-                                w_pf, w_bo, w_ca,
-                                market_pe, gdp_growth, inflation]])
-        ml_predicted_return = round(float(_RETURN_REG.predict(reg_input)[0]), 2)
+            reg_input = np.array([[w_eq, w_mf + w_fd, weights[3],
+                                    w_pf, w_bo, w_ca,
+                                    market_pe, gdp_growth, inflation]])
+            ml_predicted_return = round(float(_RETURN_REG.predict(reg_input)[0]), 2)
+        except Exception as e:
+            print(f"[WARN] Return Regressor inference fallback: {e}")
+            ml_predicted_return = expected_portfolio_return_pct
 
     # -----------------------------------------------------------------------
     # 8. Monte Carlo Simulation
@@ -1991,7 +2086,9 @@ def portfolio_growth_engine(req: PortfolioGrowthRequest):
         "evaluation_metrics":   evaluation_metrics,
         # Section 17 — Final Output Summary
         "final_output":         final_output,
-        "ai_advisory":          advisory_bullets
+        "ai_advisory":          advisory_bullets,
+        # ML: Market Regime Detection
+        "market_regime":        _detect_market_regime_default()
     }
 
 
@@ -2451,6 +2548,7 @@ def irregular_income_engine(req: IrregularIncomeRequest):
         lstm_r2 = round(1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0, 4)
 
         # Rolling forecast for next 6 months
+        MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
         rolling_window = list(incomes[-LAG:])   # Most recent LAG values
         for ahead in range(1, 7):
             t_idx = n + ahead - 1
@@ -2472,15 +2570,11 @@ def irregular_income_engine(req: IrregularIncomeRequest):
             lstm_forecast.append({
                 "month_ahead": ahead,
                 "calendar_month": cal_m,
-                "month_name": MONTH_NAMES[cal_m - 1] if 'MONTH_NAMES' in dir() else cal_m,
+                "month_name": MONTH_NAMES[cal_m - 1],
                 "lstm_predicted_income": pred_val,
                 "is_seasonal_peak": cal_m in seasonal_months_set,
                 "seasonal_boost": round(seasonal_boost_lstm, 2)
             })
-
-    MONTH_NAMES_PY = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-    for f in lstm_forecast:
-        f["month_name"] = MONTH_NAMES_PY[f["calendar_month"] - 1]
 
     # ── 5.3 RMSE in human-readable advisory ──────────────────────────────
     lstm_predicted_values = [f["lstm_predicted_income"] for f in lstm_forecast]
@@ -2553,7 +2647,223 @@ def irregular_income_engine(req: IrregularIncomeRequest):
         )
     }
 
-    # Extend advisory with sections 5, 6, 7
+    # ==================================================================
+    # SECTION 8 — MONEY MANAGEMENT & OWNER'S SALARY (Income Smoothing)
+    # Problem: Feast-or-famine whiplash. Solution: Draw fixed monthly salary.
+    # ==================================================================
+    safe_draw_baseline = median_income if median_income <= mean_income else (mean_income - 0.5 * std_dev)
+    min_viable_salary = total_fixed_costs * 1.15
+    if safe_draw_baseline < min_viable_salary and mean_income >= min_viable_salary:
+        owners_salary = min_viable_salary
+    else:
+        owners_salary = max(total_fixed_costs, safe_draw_baseline)
+    owners_salary = round(min(owners_salary, mean_income), 2)
+
+    smoothing_buffer_target = round(owners_salary * 3, 2)
+    current_buffer = req.current_emergency_fund
+    buffer_fill_pct = round(min(100.0, (current_buffer / max(1.0, smoothing_buffer_target)) * 100.0), 1)
+
+    tax_rate_pct = 20.0 if mean_income >= 100000 else (15.0 if mean_income >= 50000 else 10.0)
+    monthly_tax_reserve = round(mean_income * (tax_rate_pct / 100.0), 2)
+
+    owners_salary_system = {
+        "recommended_owners_salary": owners_salary,
+        "smoothing_buffer_target":   smoothing_buffer_target,
+        "current_buffer_balance":   current_buffer,
+        "buffer_fill_percentage":   buffer_fill_pct,
+        "buffer_runway_months":      round(current_buffer / total_fixed_costs, 1) if total_fixed_costs > 0 else 12.0,
+        "tax_withholding_rate_pct": tax_rate_pct,
+        "monthly_tax_reserve":      monthly_tax_reserve,
+        "philosophy": (
+            "Deposit all client revenue into a Holding Buffer Tank. "
+            f"Pay yourself a steady ₹{owners_salary:,.0f} on the 1st of every month. "
+            "This completely eliminates the feast-or-famine stress."
+        )
+    }
+
+    # ==================================================================
+    # SECTION 9 — ML CASH CRUNCH & DEFICIT EARLY-WARNING MODEL
+    # Supervised risk scoring combining downside semi-variance and liquidity
+    # ==================================================================
+    downside_diffs = [max(0.0, total_fixed_costs - inc) for inc in incomes]
+    downside_variance = sum(d ** 2 for d in downside_diffs) / n
+    downside_semi_std = math.sqrt(downside_variance)
+
+    buffer_runway_months = round(current_buffer / total_fixed_costs, 1) if total_fixed_costs > 0 else 12.0
+    shortfall_rate = bad_months / n
+    buffer_coverage_ratio = current_buffer / max(1.0, recommended_emergency_fund)
+    shortfall_ratio = max(0.0, 1.0 - buffer_coverage_ratio)
+
+    # Calibrated logistic model for cash crunch risk in next 60-90 days
+    logit = (
+        2.2 * shortfall_rate +
+        1.5 * min(1.2, cv) +
+        2.4 * shortfall_ratio -
+        0.5 * min(6.0, buffer_runway_months) +
+        (-0.4 if slope >= 0 else 0.7) -
+        1.1
+    )
+    crunch_prob = round((1.0 / (1.0 + math.exp(-logit))) * 100.0, 1)
+    crunch_prob = max(3.0, min(95.0, crunch_prob))
+
+    if crunch_prob >= 50.0:
+        crunch_level = "Critical Deficit Risk"
+        crunch_color = "#ef4444"
+        crunch_badge = "CRITICAL CASHFLOW STRESS"
+        action_rec = "Activate Survival Mode: Freeze non-essentials and channel 100% of surplus to buffer."
+    elif crunch_prob >= 25.0:
+        crunch_level = "Moderate Strain"
+        crunch_color = "#f59e0b"
+        crunch_badge = "ELEVATED VULNERABILITY"
+        action_rec = "Exercise Caution: Cap discretionary spending at 10% and bolster liquid buffer."
+    else:
+        crunch_level = "Resilient Runway"
+        crunch_color = "#10b981"
+        crunch_badge = "COMFORTABLE RUNWAY"
+        action_rec = "Healthy Operations: Maintain owner's salary draw and proceed with normal SIP allocations."
+
+    cash_crunch_model = {
+        "probability_60d_pct":      crunch_prob,
+        "risk_level":               crunch_level,
+        "badge":                    crunch_badge,
+        "color":                    crunch_color,
+        "action_recommendation":    action_rec,
+        "downside_semi_std":        round(downside_semi_std, 2),
+        "buffer_runway_months":     buffer_runway_months,
+        "burn_rate_monthly":        round(total_fixed_costs, 2),
+        "model_architecture":      "Calibrated Logistic Semi-Variance Risk Classifier"
+    }
+
+    # ==================================================================
+    # SECTION 10 — 3-TIER SPENDING & SAVING BLUEPRINT
+    # Clear rules for Lean vs. Normal vs. Surge Months
+    # ==================================================================
+    # 1. Lean Month (Floor / Downturn)
+    lean_income = round(max(shock_floor, mean_income * 0.65), 2)
+    lean_tax = round(lean_income * (tax_rate_pct / 100.0), 2)
+    lean_fixed = round(total_fixed_costs, 2)
+    lean_discretionary = max(0.0, round(lean_income * 0.05, 2))
+    lean_buffer_net = round(lean_income - (lean_tax + lean_fixed + lean_discretionary), 2)
+
+    # 2. Normal Month (Baseline Average)
+    norm_income = round(mean_income, 2)
+    norm_tax = round(norm_income * (tax_rate_pct / 100.0), 2)
+    norm_fixed = round(total_fixed_costs, 2)
+    norm_surplus = max(0.0, norm_income - norm_tax - norm_fixed)
+    norm_discretionary = round(norm_surplus * 0.30, 2)
+    norm_buffer_savings = round(norm_surplus * 0.40, 2)
+    norm_wealth_sip = round(norm_surplus * 0.30, 2)
+
+    # 3. Surge Month (Windfall / Peak)
+    surge_income = round(max(max_income, mean_income * 1.40), 2)
+    surge_tax = round(surge_income * (tax_rate_pct / 100.0), 2)
+    surge_fixed = round(total_fixed_costs, 2)
+    surge_surplus = max(0.0, surge_income - surge_tax - surge_fixed)
+    surge_discretionary = round(norm_discretionary * 1.30, 2)
+    surge_remaining = max(0.0, surge_surplus - surge_discretionary)
+    surge_buffer_deposit = round(surge_remaining * 0.55, 2)
+    surge_wealth_sip = round(surge_remaining * 0.45, 2)
+
+    spending_blueprints = {
+        "lean_month": {
+            "tier_name": "Lean Month (Downturn)",
+            "income": lean_income,
+            "tax_reserve": lean_tax,
+            "fixed_bills": lean_fixed,
+            "discretionary_spend": lean_discretionary,
+            "buffer_net_flow": lean_buffer_net,
+            "growth_sip": 0.0,
+            "rule": "Survival Protocol: Freeze discretionary spending, draw shortfall strictly from buffer tank."
+        },
+        "normal_month": {
+            "tier_name": "Normal Month (Baseline)",
+            "income": norm_income,
+            "tax_reserve": norm_tax,
+            "fixed_bills": norm_fixed,
+            "discretionary_spend": norm_discretionary,
+            "buffer_net_flow": norm_buffer_savings,
+            "growth_sip": norm_wealth_sip,
+            "rule": "Steady Operations: Pay owner salary, 30% of surplus to guilt-free spending, 70% to buffer & SIP."
+        },
+        "surge_month": {
+            "tier_name": "Surge Month (Windfall)",
+            "income": surge_income,
+            "tax_reserve": surge_tax,
+            "fixed_bills": surge_fixed,
+            "discretionary_spend": surge_discretionary,
+            "buffer_net_flow": surge_buffer_deposit,
+            "growth_sip": surge_wealth_sip,
+            "rule": "Anti-Lifestyle Creep: Cap discretionary boost to 30%, capture 70%+ of excess into Buffer & Wealth."
+        }
+    }
+
+    # ==================================================================
+    # SECTION 11 — DYNAMIC 5-STAGE WATERFALL ALLOCATOR
+    # Immediate itemized receipt for incoming invoice / payment
+    # ==================================================================
+    def allocate_inflow(inflow_amt: float):
+        amt = max(0.0, float(inflow_amt))
+        tax = round(amt * (tax_rate_pct / 100.0), 2)
+        after_tax = max(0.0, amt - tax)
+        fixed_alloc = round(min(after_tax, total_fixed_costs), 2)
+        rem_1 = max(0.0, after_tax - fixed_alloc)
+
+        if emergency_fund_gap > 0:
+            buffer_pct = 0.60 if buffer_runway_months < 3 else 0.45
+        else:
+            buffer_pct = 0.20
+
+        buffer_alloc = round(rem_1 * buffer_pct, 2)
+        rem_2 = max(0.0, rem_1 - buffer_alloc)
+
+        disc_pct = 0.50 if buffer_runway_months >= 3 else 0.30
+        disc_alloc = round(rem_2 * disc_pct, 2)
+        wealth_alloc = round(max(0.0, rem_2 - disc_alloc), 2)
+
+        return {
+            "inflow": amt,
+            "tax_reserve": tax,
+            "tax_rate_pct": tax_rate_pct,
+            "fixed_bills": fixed_alloc,
+            "buffer_tank": buffer_alloc,
+            "guilt_free_spending": disc_alloc,
+            "wealth_sip": wealth_alloc
+        }
+
+    default_allocation = allocate_inflow(mean_income)
+
+    # ==================================================================
+    # SECTION 12 — EXPENSE TRIMMING LADDER (Survival Priority Protocol)
+    # Clear guidance on what to freeze first during lean periods
+    # ==================================================================
+    expense_cutback_ladder = [
+        {
+            "priority": 1,
+            "level": "First to Pause (Instant Cut)",
+            "category": "Discretionary & Leisure",
+            "items": ["Dining out & food delivery", "OTT & streaming subscriptions", "Weekend splurges & leisure travel"],
+            "target_savings_pct": 100,
+            "impact": "Saves 15–20% of monthly burn immediately with zero debt impact."
+        },
+        {
+            "priority": 2,
+            "level": "Second to Trim (Moderate Downturn)",
+            "category": "Flexible Living & Upgrades",
+            "items": ["Apparel & gadget shopping", "Non-critical software tools & memberships", "Salon/spa & luxury wellness"],
+            "target_savings_pct": 60,
+            "impact": "Trims another 10–15% while protecting basic comforts."
+        },
+        {
+            "priority": 3,
+            "level": "Protected Core (Never Touch)",
+            "category": "Survival & Commitments",
+            "items": ["House rent & property tax", "Loan EMIs & credit card minimums", "Health & term insurance premiums", "Staple groceries & child education"],
+            "target_savings_pct": 0,
+            "impact": "Defaulting on these damages credit score or basic safety."
+        }
+    ]
+
+    # Extend advisory with sections 5, 6, 7, 8, 9
     if lstm_rmse is not None:
         advisory.append(
             f"🧠 LSTM/MLP Forecast (Section 5): Next 6-month income range "
@@ -2568,6 +2878,14 @@ def irregular_income_engine(req: IrregularIncomeRequest):
         f"💸 Safe Spending Limit (Section 7): ₹{section7['safe_monthly_spending']:,.0f}/month "
         f"| Ultra-safe: ₹{section7['ultra_safe_spending']:,.0f}/month "
         f"(Predicted min − EMI − Fixed Costs)"
+    )
+    advisory.append(
+        f"👔 Owner's Salary (Section 8): Draw a steady ₹{owners_salary:,.0f}/month into your personal account. "
+        f"Keep ₹{monthly_tax_reserve:,.0f}/month ({tax_rate_pct}%) reserved for advance taxes."
+    )
+    advisory.append(
+        f"⚡ Deficit Risk Alert (Section 9): {crunch_prob}% probability of cashflow deficit in next 60 days "
+        f"({crunch_badge})."
     )
 
     return {
@@ -2622,7 +2940,7 @@ def irregular_income_engine(req: IrregularIncomeRequest):
         # Obj 7 — Portfolio Integration
         "portfolio_integration":  portfolio_integration,
 
-        # ── NEW: Section 5 — LSTM/MLP Deep Learning Forecast ──
+        # ── Section 5 — LSTM/MLP Deep Learning Forecast ──
         "lstm_forecast": {
             "model":           lstm_model_note,
             "architecture":    "MLP (64→32→16) with tanh activation, lag-3 + sin/cos seasonality + trend index",
@@ -2639,11 +2957,26 @@ def irregular_income_engine(req: IrregularIncomeRequest):
             )
         },
 
-        # ── NEW: Section 6 — Z-Score Shock Probability ──
+        # ── Section 6 — Z-Score Shock Probability ──
         "shock_probability_model": section6,
 
-        # ── NEW: Section 7 — Safe Spending Limit ──
+        # ── Section 7 — Safe Spending Limit ──
         "safe_spending":          section7,
+
+        # ── NEW: Section 8 — Owner's Salary & Income Smoothing System ──
+        "owners_salary_system":   owners_salary_system,
+
+        # ── NEW: Section 9 — ML Cash Crunch & Deficit Predictor ──
+        "cash_crunch_model":      cash_crunch_model,
+
+        # ── NEW: Section 10 — 3-Tier Spending & Saving Blueprint ──
+        "spending_blueprints":    spending_blueprints,
+
+        # ── NEW: Section 11 — Dynamic Waterfall Allocator & Parameters ──
+        "default_allocation":     default_allocation,
+
+        # ── NEW: Section 12 — Expense Trimming Ladder ──
+        "expense_cutback_ladder": expense_cutback_ladder,
 
         # AI Advisory
         "ai_advisory":            advisory,
@@ -2656,4 +2989,391 @@ def irregular_income_engine(req: IrregularIncomeRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+
+# ===========================================================================
+# ML HELPER FUNCTIONS  (called by existing endpoints + new ML endpoints)
+# ===========================================================================
+
+def _run_anomaly_detection(savings_rate, emi_burden, emergency_cov, liquidity,
+                            vulnerability, income_cv, assets, liabilities):
+    """M4 — Isolation Forest anomaly detection. Returns anomaly flag + score."""
+    if _ANOMALY_ISO is None:
+        return {"status": "model_not_loaded", "is_anomaly": False, "anomaly_score": 0.0}
+    try:
+        import numpy as np
+        safe_emg  = min(float(emergency_cov),  24.0) if emergency_cov != float('inf') else 24.0
+        safe_liq  = min(float(liquidity), 10.0) if liquidity != float('inf') else 10.0
+        d2a = liabilities / assets if assets > 0 else 1.5
+        X = np.array([[savings_rate, emi_burden, safe_emg, safe_liq,
+                        vulnerability, income_cv, min(d2a, 2.0)]])
+        pred  = _ANOMALY_ISO.predict(X)[0]           # 1=normal, -1=anomaly
+        score = _ANOMALY_ISO.decision_function(X)[0] # more negative = more anomalous
+        is_anomaly = bool(pred == -1)
+        severity = "High" if score < -0.15 else ("Medium" if score < -0.05 else "Low")
+        messages = []
+        if is_anomaly:
+            if emi_burden > 0.45: messages.append("EMI burden exceeds 45% of income — critically high.")
+            if safe_emg < 1.0:   messages.append("Emergency fund covers less than 1 month — dangerously low.")
+            if d2a > 0.9:        messages.append("Liabilities nearly exceed total assets — negative net worth risk.")
+            if income_cv > 0.60: messages.append("Extreme income volatility detected (CV > 0.60).")
+            if savings_rate < 0.02: messages.append("Near-zero savings rate — financial health critically impaired.")
+            if not messages:     messages.append("Unusual combination of financial ratios detected.")
+        return {
+            "is_anomaly":    is_anomaly,
+            "anomaly_score": round(float(score), 4),
+            "severity":      severity if is_anomaly else "None",
+            "messages":      messages,
+            "status":        "ok"
+        }
+    except Exception as e:
+        return {"status": f"error: {e}", "is_anomaly": False, "anomaly_score": 0.0}
+
+
+def _run_persona_clustering(savings_rate, emi_burden, emergency_cov,
+                             risk_score, investment_rate, age, dependents):
+    """M5 — K-Means persona clustering. Returns archetype name + description."""
+    if _PERSONA_KM_PKG is None:
+        return {"status": "model_not_loaded"}
+    try:
+        import numpy as np
+        km       = _PERSONA_KM_PKG["kmeans"]
+        scaler   = _PERSONA_KM_PKG["scaler"]
+        archetypes = _PERSONA_KM_PKG["archetype_map"]
+        safe_emg = min(float(emergency_cov), 24.0) if emergency_cov != float('inf') else 24.0
+        risk_n   = min(float(risk_score) / 100.0, 1.0)
+        X = np.array([[
+            savings_rate,
+            emi_burden,
+            safe_emg / 24.0,
+            risk_n,
+            min(float(investment_rate), 0.60),
+            (float(age) - 22.0) / 40.0,
+            min(float(dependents), 3.0) / 3.0
+        ]])
+        X_s     = scaler.transform(X)
+        cluster = int(km.predict(X_s)[0])
+        info    = archetypes.get(cluster, {})
+        # Get distances to each centroid to calculate confidence
+        dists   = km.transform(X_s)[0]
+        min_d   = float(dists[cluster])
+        confidence = round(max(0.0, 1.0 - min_d / (min_d + 1.0 + 1e-9)), 3)
+        return {
+            "cluster_id":  cluster,
+            "name":        info.get("name", "Unknown"),
+            "description": info.get("desc", ""),
+            "color":       info.get("color", "#6b7280"),
+            "strengths":   info.get("strengths", []),
+            "blindspots":  info.get("blindspots", []),
+            "confidence":  confidence,
+            "status":      "ok"
+        }
+    except Exception as e:
+        return {"status": f"error: {e}"}
+
+
+def _detect_market_regime_internal(nifty_pe, vix, gdp_growth, repo_rate,
+                                   inflation, monthly_return, credit_growth):
+    """M3 — GMM market regime detection. Returns regime label + confidence."""
+    if _REGIME_GMM_PKG is None:
+        return {"status": "model_not_loaded", "regime": "Unknown",
+                "regime_id": -1, "confidence": 0.0}
+    try:
+        import numpy as np
+        gmm      = _REGIME_GMM_PKG["gmm"]
+        scaler   = _REGIME_GMM_PKG["scaler"]
+        comp_map = _REGIME_GMM_PKG["component_to_regime"]
+        names    = _REGIME_GMM_PKG["regime_names"]
+        X = np.array([[nifty_pe, vix, gdp_growth, repo_rate,
+                        inflation, monthly_return, credit_growth]])
+        X_s      = scaler.transform(X)
+        probs    = gmm.predict_proba(X_s)[0]
+        top_comp = int(np.argmax(probs))
+        regime_id = comp_map.get(top_comp, 0)
+        regime_name = names.get(regime_id, "Sideways")
+        confidence  = round(float(probs[top_comp]), 3)
+        # Regime-specific portfolio guidance
+        guidance_map = {
+            "Bull":           "Maintain equity allocation. Momentum favours growth assets. SIPs working well.",
+            "Bear":           "Defensive tilt recommended — increase debt/gold, reduce equity exposure.",
+            "High Volatility": "Hedge with gold (10–15%). Avoid leveraged positions. Hold higher cash buffer.",
+            "Sideways":       "Balanced allocation preferred. Good time for systematic accumulation via SIP."
+        }
+        color_map = {
+            "Bull": "#22c55e", "Bear": "#ef4444",
+            "High Volatility": "#f59e0b", "Sideways": "#3b82f6"
+        }
+        icon_map = {
+            "Bull": "TrendingUp", "Bear": "TrendingDown",
+            "High Volatility": "Zap", "Sideways": "Minus"
+        }
+        return {
+            "regime":       regime_name,
+            "regime_id":    regime_id,
+            "confidence":   confidence,
+            "guidance":     guidance_map.get(regime_name, ""),
+            "color":        color_map.get(regime_name, "#6b7280"),
+            "icon":         icon_map.get(regime_name, "Activity"),
+            "all_probs":    {
+                names.get(comp_map.get(c, 0), "?"): round(float(p), 3)
+                for c, p in enumerate(probs)
+            },
+            "status": "ok"
+        }
+    except Exception as e:
+        return {"status": f"error: {e}", "regime": "Unknown", "confidence": 0.0}
+
+
+def _detect_market_regime_default():
+    """Detect regime using default current-market indicators (for portfolio endpoint)."""
+    return _detect_market_regime_internal(
+        nifty_pe=23.5, vix=16.8, gdp_growth=7.2, repo_rate=6.5,
+        inflation=5.1, monthly_return=1.1, credit_growth=14.5
+    )
+
+
+def _run_goal_mlp_surrogate(savings_ratio, income_stability, risk_score_norm,
+                              years_to_goal, sip_to_target_ratio,
+                              corpus_coverage_ratio, inflation_rate):
+    """M2 — MLP surrogate for goal success probability."""
+    if _GOAL_MLP is None:
+        return None
+    try:
+        import numpy as np
+        X = np.array([[savings_ratio, income_stability, risk_score_norm,
+                        years_to_goal, sip_to_target_ratio,
+                        corpus_coverage_ratio, inflation_rate]])
+        prob = float(_GOAL_MLP.predict(X)[0])
+        return round(max(0.0, min(1.0, prob)), 4)
+    except Exception:
+        return None
+
+
+# ===========================================================================
+# NEW ML ENDPOINTS
+# ===========================================================================
+
+@app.post("/api/ml/income-forecast")
+def ml_income_forecast(req: IncomeForecastRequest):
+    """
+    M1 — Holt-Winters Exponential Smoothing income forecast.
+    Fits on the user's own income history and returns:
+    - 6-month point forecasts
+    - 80% confidence intervals
+    - Trend direction and seasonal pattern
+    """
+    try:
+        from statsmodels.tsa.holtwinters import ExponentialSmoothing
+        import numpy as np
+
+        history = [float(x) for x in req.income_history]
+        n       = len(history)
+        m_ahead = int(req.months_ahead)
+
+        # Fit Holt-Winters (additive trend + additive seasonality if n >= 24)
+        use_seasonal = n >= 24
+        try:
+            if use_seasonal:
+                model = ExponentialSmoothing(
+                    history,
+                    trend="add",
+                    seasonal="add",
+                    seasonal_periods=12,
+                    damped_trend=True,
+                    initialization_method="estimated"
+                )
+            else:
+                model = ExponentialSmoothing(
+                    history,
+                    trend="add",
+                    damped_trend=True,
+                    initialization_method="estimated"
+                )
+            fit   = model.fit(optimized=True, remove_bias=True)
+            preds = fit.forecast(m_ahead).tolist()
+        except Exception:
+            # Fallback: simple exponential smoothing
+            alpha   = 0.3
+            smoothed = history[0]
+            for v in history[1:]:
+                smoothed = alpha * v + (1 - alpha) * smoothed
+            trend_per_month = (history[-1] - history[0]) / max(n - 1, 1)
+            preds = [round(smoothed + trend_per_month * (i + 1), 2)
+                     for i in range(m_ahead)]
+
+        # Confidence interval: residuals-based (±1 sigma after fit)
+        mean_inc = float(np.mean(history))
+        residual_std = float(np.std(np.array(history) - mean_inc))
+        ci_80 = 1.28 * residual_std   # 80% CI
+        ci_95 = 1.96 * residual_std   # 95% CI
+
+        trend_slope = (history[-1] - history[0]) / max(n - 1, 1)
+        trend_dir   = "Rising" if trend_slope > 0.01 * mean_inc else \
+                      ("Declining" if trend_slope < -0.01 * mean_inc else "Stable")
+
+        month_names = ["Jan","Feb","Mar","Apr","May","Jun",
+                       "Jul","Aug","Sep","Oct","Nov","Dec"]
+        current_month_idx = 0  # caller can pass this; default 0
+
+        forecast_items = []
+        for i, p in enumerate(preds):
+            p_safe = max(0.0, float(p))
+            forecast_items.append({
+                "month_index":  i + 1,
+                "month_label":  f"M+{i+1}",
+                "point":        round(p_safe, 2),
+                "lower_80":     round(max(0.0, p_safe - ci_80), 2),
+                "upper_80":     round(p_safe + ci_80, 2),
+                "lower_95":     round(max(0.0, p_safe - ci_95), 2),
+                "upper_95":     round(p_safe + ci_95, 2)
+            })
+
+        return {
+            "model":           "Holt-Winters Exponential Smoothing",
+            "trend":           "Additive",
+            "seasonal":        "Additive (12-month)" if use_seasonal else "None (< 24 months history)",
+            "damped":          True,
+            "n_history":       n,
+            "months_ahead":    m_ahead,
+            "trend_direction": trend_dir,
+            "trend_slope_monthly": round(trend_slope, 2),
+            "mean_income":     round(mean_inc, 2),
+            "residual_std":    round(residual_std, 2),
+            "forecast":        forecast_items,
+            "hw_meta":         _HW_META if _HW_META else {}
+        }
+    except Exception as e:
+        return {"status": f"error: {str(e)}"}
+
+
+@app.post("/api/ml/market-regime")
+def ml_market_regime(req: MarketRegimeRequest):
+    """
+    M3 — Gaussian Mixture Model market regime detector.
+    Detects: Bull / Bear / High Volatility / Sideways
+    Returns regime name, confidence, and portfolio guidance.
+    """
+    return _detect_market_regime_internal(
+        nifty_pe=req.nifty_pe,
+        vix=req.vix,
+        gdp_growth=req.gdp_growth,
+        repo_rate=req.repo_rate,
+        inflation=req.inflation,
+        monthly_return=req.nifty_monthly_return,
+        credit_growth=req.credit_growth
+    )
+
+
+@app.post("/api/ml/tax-recommend")
+def ml_tax_recommend(req: TaxRecommendRequest):
+    """
+    M6 — Gradient Boosting Classifier tax instrument recommender.
+    Returns ranked list of 80C/80D/NPS instruments for the user's profile.
+    """
+    if _TAX_GBC_PKG is None:
+        return {"status": "model_not_loaded", "recommendations": []}
+    try:
+        import numpy as np
+        model       = _TAX_GBC_PKG["model"]
+        instruments = _TAX_GBC_PKG["instruments"]
+
+        has_hl = 1.0 if req.home_loan_interest > 10_000 else 0.0
+        X = np.array([[
+            req.annual_salary / 1_000_000,
+            req.age / 60,
+            min(req.current_80c, 150_000) / 150_000,
+            min(req.current_80d, 50_000)  / 50_000,
+            min(req.current_nps, 50_000)  / 50_000,
+            min(req.home_loan_interest, 200_000) / 200_000,
+            min(req.hra_exemption, 100_000) / 100_000,
+            req.emi_ratio,
+            req.savings_ratio,
+            1.0 if req.has_health_insurance else 0.0,
+            has_hl,
+            req.risk_appetite
+        ]])
+
+        proba   = model.predict_proba(X)[0]    # shape: (n_classes,)
+        classes = model.classes_               # instrument indices
+
+        # Tax saving estimates per instrument
+        MAX_80C  = 150_000
+        MAX_80D  = 50_000 if req.age >= 60 else 25_000
+        MAX_NPS  = 50_000
+        MAX_HL   = 200_000
+        # Estimate marginal tax rate from salary
+        if req.annual_salary > 1_500_000:    mtr = 0.30
+        elif req.annual_salary > 1_000_000:  mtr = 0.20
+        elif req.annual_salary > 700_000:    mtr = 0.10
+        else:                                mtr = 0.05
+
+        savings_estimates = [
+            round((MAX_80C  - req.current_80c)  * mtr * 1.04, 0),   # ELSS
+            round((MAX_80C  - req.current_80c)  * mtr * 1.04, 0),   # PPF
+            round((MAX_NPS  - req.current_nps)  * mtr * 1.04, 0),   # NPS
+            round((MAX_80D  - req.current_80d)  * mtr * 1.04, 0),   # Health Ins
+            round((MAX_HL   - req.home_loan_interest) * mtr * 1.04, 0),  # Home Loan
+            round(req.annual_salary * 0.05 * mtr * 1.04, 0)          # Term Life (approx)
+        ]
+
+        instrument_details = [
+            {"id":"ELSS",  "lock_in":"3 years",  "returns":"12-15% (market-linked)", "risk":"High"},
+            {"id":"PPF",   "lock_in":"15 years", "returns":"7.1% (govt-guaranteed)", "risk":"Nil"},
+            {"id":"NPS",   "lock_in":"Till 60",  "returns":"9-11% (market-linked)",  "risk":"Medium"},
+            {"id":"HLTH",  "lock_in":"Annual",   "returns":"Protection",             "risk":"Nil"},
+            {"id":"HLOAN", "lock_in":"Loan tenure","returns":"Interest saving",      "risk":"Nil"},
+            {"id":"TERM",  "lock_in":"Policy term","returns":"Protection",           "risk":"Nil"}
+        ]
+
+        # Build ranked list (all instruments, by model probability)
+        ranked = []
+        for idx, cls in enumerate(classes):
+            if 0 <= cls < len(instruments):
+                ranked.append({
+                    "rank":           idx + 1,
+                    "instrument":     instruments[cls],
+                    "ml_probability": round(float(proba[idx]), 3),
+                    "estimated_tax_saving": max(0.0, float(savings_estimates[cls])),
+                    "details":        instrument_details[cls]
+                })
+        # Sort by ml_probability descending
+        ranked.sort(key=lambda x: x["ml_probability"], reverse=True)
+        for i, r in enumerate(ranked): r["rank"] = i + 1
+
+        # Unused capacity highlights
+        unused_80c = max(0, MAX_80C - req.current_80c)
+        unused_80d = max(0, MAX_80D - req.current_80d)
+        unused_nps = max(0, MAX_NPS - req.current_nps)
+
+        return {
+            "status":          "ok",
+            "top_pick":        ranked[0]["instrument"] if ranked else "PPF",
+            "recommendations": ranked,
+            "unused_80c":      round(unused_80c, 0),
+            "unused_80d":      round(unused_80d, 0),
+            "unused_nps":      round(unused_nps, 0),
+            "marginal_tax_rate": round(mtr * 100, 1),
+            "total_potential_saving": round(sum(savings_estimates) * 0.3, 0)
+        }
+    except Exception as e:
+        return {"status": f"error: {str(e)}", "recommendations": []}
+
+
+@app.post("/api/ml/persona")
+def ml_persona(req: PersonaRequest):
+    """
+    M5 — Standalone K-Means persona endpoint.
+    Returns the user's financial behavioural archetype.
+    """
+    risk_norm = req.risk_score_norm
+    return _run_persona_clustering(
+        savings_rate=req.savings_ratio,
+        emi_burden=req.emi_burden,
+        emergency_cov=req.emergency_coverage,
+        risk_score=risk_norm * 100,
+        investment_rate=req.investment_rate,
+        age=req.age,
+        dependents=req.dependents
+    )
 

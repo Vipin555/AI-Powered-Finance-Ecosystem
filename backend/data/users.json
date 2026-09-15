@@ -6,7 +6,7 @@
     "passwordHash": "bd3af5aa91d64db4371bfe032b989e647c6b785c0a05d742362a8b3176877602",
     "role": "admin",
     "createdAt": "2026-01-15T10:00:00.000Z",
-    "lastLogin": "2026-08-20T16:17:34.189Z"
+    "lastLogin": "2026-09-14T18:12:06.469Z"
   },
   {
     "id": "user_demo_002",
@@ -15,7 +15,7 @@
     "passwordHash": "2bf28071bdde29e0169dd96bb9570a5daceee490619b2187f41e23b35f5357a0",
     "role": "user",
     "createdAt": "2026-02-10T14:30:00.000Z",
-    "lastLogin": "2026-08-21T03:57:14.558Z"
+    "lastLogin": "2026-09-14T18:12:27.361Z"
   },
   {
     "id": "user_vishal_003",
@@ -42,6 +42,6 @@
     "passwordHash": "e3373f9f93d9f2e7cbbf004af366ae29d2ce95e45738aea9f48d7e0e27d1510e",
     "role": "user",
     "createdAt": "2026-08-21T04:00:00.000Z",
-    "lastLogin": "2026-08-21T04:00:00.494Z"
+    "lastLogin": "2026-08-21T05:23:16.080Z"
   }
 ]

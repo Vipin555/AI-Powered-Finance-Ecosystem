@@ -2,15 +2,16 @@
   "user_demo_002": {
     "advisor": {
       "age": 29,
-      "monthly_income": 95000,
-      "monthly_expenses": 38000,
-      "total_emis": 12000,
-      "total_assets": 850000,
-      "total_liabilities": 240000,
-      "current_investments": 420000,
+      "monthly_income": 45000,
+      "monthly_expenses": 17000,
+      "total_emis": 9000,
+      "total_assets": 400000,
+      "total_liabilities": 50000,
+      "current_investments": 350000,
       "emergency_fund": 210000,
       "dependents": 1,
-      "monthly_sip": 18000
+      "monthly_sip": 18000,
+      "updatedAt": "2026-09-15T09:56:09.046Z"
     },
     "tax": {
       "salary_income": 1400000,
@@ -35,7 +36,21 @@
       "standard_deduction": 75000,
       "age": 29,
       "residential_status": "Resident",
-      "regime_choice": "Auto"
+      "regime_choice": "Auto",
+      "rental_income": 0,
+      "interest_income": 0,
+      "c80c": 150000,
+      "c80d": 25000,
+      "nps": 50000,
+      "hra": 120000,
+      "home_loan": 0,
+      "edu_loan": 0,
+      "tax_saving_budget": 150000,
+      "risk_profile": "Moderate",
+      "salary_growth_rate": 10,
+      "business_growth_rate": 15,
+      "inflation_rate": 6,
+      "updatedAt": "2026-09-15T09:56:27.503Z"
     },
     "simulator": {
       "goal_name": "Retirement & Wealth Independence",
@@ -44,7 +59,27 @@
       "current_savings": 850000,
       "monthly_investment": 35000,
       "expected_return": 12.5,
-      "inflation_rate": 6
+      "inflation_rate": 6,
+      "goals": [
+        {
+          "name": "Retirement Corpus",
+          "target_amount_today": 50000000,
+          "years_to_goal": 25,
+          "inflation_rate": 0.06
+        }
+      ],
+      "finData": {
+        "current_corpus": 1500000,
+        "monthly_sip": 50000,
+        "user_iss": 0.8,
+        "user_fragility": 0.3,
+        "expected_return": 0.12,
+        "risk_profile": "Moderate",
+        "savings_rate": 0.2,
+        "emergency_coverage": 4.5,
+        "age": 32
+      },
+      "updatedAt": "2026-09-14T18:15:57.272Z"
     },
     "portfolio": {
       "current_equity": 55,
@@ -53,7 +88,52 @@
       "current_cash": 8,
       "total_portfolio_value": 1240000,
       "monthly_contribution": 20000,
-      "risk_tolerance": "Moderate"
+      "risk_tolerance": "Moderate",
+      "assetInputs": {
+        "stocks": {
+          "current_value": 300000,
+          "expected_return": 14,
+          "risk_level": "high"
+        },
+        "mutual_funds": {
+          "current_value": 250000,
+          "expected_return": 12,
+          "risk_level": "medium"
+        },
+        "fixed_deposits": {
+          "current_value": 150000,
+          "expected_return": 7,
+          "risk_level": "low"
+        },
+        "gold": {
+          "current_value": 100000,
+          "expected_return": 9,
+          "risk_level": "low"
+        },
+        "pf": {
+          "current_value": 120000,
+          "expected_return": 8.15,
+          "risk_level": "low"
+        },
+        "bonds": {
+          "current_value": 50000,
+          "expected_return": 7.5,
+          "risk_level": "low"
+        },
+        "cash": {
+          "current_value": 30000,
+          "expected_return": 3.5,
+          "risk_level": "low"
+        }
+      },
+      "userAge": 32,
+      "riskProfile": "Moderate",
+      "monthlySip": 15000,
+      "projectionYears": 10,
+      "incomeStability": 0.7,
+      "goalProximityYears": 10,
+      "targetWealth": "",
+      "updatedAt": "2026-09-15T09:55:42.559Z"
     },
     "irregular_income": {
       "average_monthly_income": 85000,
@@ -61,7 +141,32 @@
       "max_monthly_income": 160000,
       "essential_expenses": 42000,
       "buffer_target_months": 6,
-      "current_buffer": 180000
+      "current_buffer": 180000,
+      "income_history": [
+        65000,
+        85000,
+        42000,
+        110000,
+        58000,
+        95000,
+        38000,
+        125000,
+        70000,
+        90000,
+        48000,
+        115000
+      ],
+      "income_category": "freelance",
+      "fixed_monthly_expenses": 35000,
+      "emi_commitments": 12000,
+      "current_emergency_fund": 120000,
+      "seasonal_months": [
+        9,
+        10,
+        11
+      ],
+      "historyInput": "65000, 85000, 42000, 110000, 58000, 95000, 38000, 125000, 70000, 90000, 48000, 115000",
+      "updatedAt": "2026-09-15T09:54:02.733Z"
     }
   },
   "user_admin_001": {

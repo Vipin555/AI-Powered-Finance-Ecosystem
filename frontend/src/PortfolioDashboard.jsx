@@ -364,6 +364,49 @@ export default function PortfolioDashboard() {
             </div>
           </div>
 
+          {/* ── ML: Market Regime Badge ── */}
+          {r.market_regime && r.market_regime.status === 'ok' && (() => {
+            const mr = r.market_regime;
+            return (
+              <div style={{
+                background: `linear-gradient(90deg, ${mr.color}18, ${mr.color}08)`,
+                border: `1px solid ${mr.color}40`,
+                borderRadius: 12, padding: '1rem 1.4rem',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                flexWrap: 'wrap', gap: '1rem',
+                marginBottom: '1.5rem'
+              }} className="dash-anim-1">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                  <div style={{
+                    background: mr.color, borderRadius: 10, width: 44, height: 44,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.3rem', flexShrink: 0
+                  }}>
+                    {mr.regime === 'Bull' ? '🐂' : mr.regime === 'Bear' ? '🐻' : mr.regime === 'High Volatility' ? '⚡' : '📊'}
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem' }}>
+                      📡 ML Market Regime: <span style={{ color: mr.color }}>{mr.regime}</span>
+                      <span style={{
+                        marginLeft: '0.6rem', fontSize: '0.75rem', background: `${mr.color}25`,
+                        color: mr.color, padding: '0.15rem 0.5rem', borderRadius: 6, fontWeight: 600
+                      }}>{Math.round((mr.confidence || 0) * 100)}% confidence</span>
+                    </p>
+                    <p style={{ margin: '0.2rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{mr.guidance}</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                  {Object.entries(mr.all_probs || {}).map(([name, prob]) => (
+                    <span key={name} style={{
+                      fontSize: '0.72rem', padding: '0.25rem 0.6rem', borderRadius: 6,
+                      background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)'
+                    }}>{name}: {Math.round(prob * 100)}%</span>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* ── ROW 1: 4 KPI Cards ── */}
           <div className="kpi-row-4 dash-anim-1">
             {/* Card 1: Total Portfolio Value */}
